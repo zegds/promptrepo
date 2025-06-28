@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prompt Repository</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="sidebar">
+    <img src="{{ url_for('static', filename='icons/repository.svg') }}" alt="Repository Icon">
+    <button onclick="addFolder()">+ Folder</button>
+    <button onclick="addPrompt()">+ Prompt</button>
+    <ul id="folder-list"></ul>
+  </div>
+
+  <div class="main">
+    <div class="top-bar">
+      <input type="text" id="search-bar" placeholder="Search prompts..." oninput="searchPrompts()">
+    </div>
+    <div id="prompt-list"></div>
+    <div id="prompt-editor" style="display:none;">
+      <input type="text" id="prompt-title" placeholder="Prompt Title">
+      <textarea id="prompt-text" placeholder="Prompt Text"></textarea>
+      <button onclick="savePrompt()">Save</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
