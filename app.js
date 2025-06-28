@@ -44,6 +44,14 @@ function renderFolders() {
   }
 }
 
+function confirmDeletePrompt(index) {
+  if (confirm("Are you sure you want to delete this prompt?")) {
+    config.folders[selectedFolder].splice(index, 1);
+    saveConfig();
+    renderPrompts();
+  }
+}
+
 function renderPrompts() {
   const container = document.getElementById('prompt-list');
   container.innerHTML = '';
