@@ -8,6 +8,28 @@ window.onload = async () => {
   renderFolders();
 };
 
+li.contentEditable = true;
+li.onblur = () => renameFolder(li.innerText, folder);
+function renameFolder(newName, oldName) {
+  if (newName === oldName || !newName.trim()) return;
+  if (config.folders[newName]) {
+    alert("Folder name already exists.");
+    renderFolders();
+    return;
+  }
+  config.folders[newName] = config.folders[oldName];
+  delete config.folders[oldName];
+
+  if (selectedFolder === oldName) selectedFolder = newName;
+
+  saveConfig();
+  renderFolders();
+}
+function renamePrompt(index, newName) {
+  config.folders[selectedFolder][index].title = newName.trim();
+  saveConfig();
+}
+
 function renderFolders() {
   const list = document.getElementById('folder-list');
   list.innerHTML = '';
@@ -28,11 +50,49 @@ function renderPrompts() {
   const prompts = config.folders[selectedFolder];
   prompts.forEach((prompt, idx) => {
     const div = document.createElement('div');
-    div.innerHTML = `<b>${prompt.title}</b> 
+    div.classList.add('prompt-item');
+    div.setAttribute('draggable', true);
+    div.dataset.index = idx;
+    div.dataset.folder = selectedFolder;
+    div.ondragstart = dragPrompt;
+
+    div.innerHTML = `
+      <span contenteditable="true" onblur="renamePrompt(${idx}, this.innerText)">${prompt.title}</span>
       <button onclick="editPrompt(${idx})">Edit</button>
-      <button onclick="copyPrompt(${idx})">Copy</button>`;
+      <button onclick="copyPrompt(${idx})">Copy</button>
+      <button onclick="confirmDeletePrompt(${idx})">🗑️</button>
+    `;
     container.appendChild(div);
   });
+}
+
+function dragPrompt(event) {
+  const index = event.target.dataset.index;
+  const folder = event.target.dataset.folder;
+  event.dataTransfer.setData("text/plain", JSON.stringify({ index, folder }));
+}
+
+li.ondrop = dropPrompt;
+li.ondragover = (e) => e.preventDefault();
+function dropPrompt(event) {
+  event.preventDefault();
+  const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+  const fromFolder = data.folder;
+  const index = data.index;
+  const prompt = config.folders[fromFolder][index];
+
+  const toFolder = event.target.innerText;
+  if (!config.folders[toFolder]) return;
+
+  // Move prompt
+  config.folders[fromFolder].splice(index, 1);
+  config.folders[toFolder].push(prompt);
+
+  saveConfig();
+  renderFolders();
+  if (selectedFolder === fromFolder || selectedFolder === toFolder) {
+    renderPrompts();
+  }
 }
 
 function addFolder() {
