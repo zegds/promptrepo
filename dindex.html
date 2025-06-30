@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Repository</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="app-title">
+                    <i class="fas fa-database"></i>
+                    <span>Prompt Repository</span>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-outline" onclick="showAddPromptModal()">
+                        <i class="fas fa-plus"></i> Prompt
+                    </button>
+                    <button class="btn btn-outline" onclick="showAddFolderModal()">
+                        <i class="fas fa-folder-plus"></i> Folder
+                    </button>
+                </div>
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search prompts..." oninput="handleSearch()">
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Repository</div>
+                    <div id="promptList" class="prompt-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <header class="main-header">
+                <button class="sidebar-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-title">
+                    <i class="fas fa-database"></i>
+                    <span>Prompt Repository</span>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="tabs">
+                    <div class="tab-list">
+                        <button class="tab-trigger active" data-tab="repository" onclick="switchTab('repository')">
+                            Repository
+                        </button>
+                        <button class="tab-trigger" data-tab="most-used" onclick="switchTab('most-used')">
+                            Most Used
+                        </button>
+                    </div>
+
+                    <div id="repository-tab" class="tab-content active">
+                        <div id="promptDetails" class="prompt-details hidden">
+                            <div class="prompt-header">
+                                <div class="prompt-title-section">
+                                    <h2 id="promptTitle"></h2>
+                                    <div id="promptBadges" class="prompt-badges"></div>
+                                </div>
+                                <div class="prompt-actions">
+                                    <button id="historyBtn" class="btn btn-outline hidden" onclick="showVersionHistory()">
+                                        <i class="fas fa-history"></i> History
+                                    </button>
+                                    <button class="btn btn-outline" onclick="editPrompt()">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="btn btn-outline" onclick="copyPrompt()">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <button class="btn btn-outline" onclick="deleteCurrentPrompt()">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="prompt-content">
+                                <pre id="promptText"></pre>
+                            </div>
+                        </div>
+
+                        <div id="folderDetails" class="folder-details hidden">
+                            <h2 id="folderTitle"></h2>
+                            <div id="folderPrompts" class="folder-prompts"></div>
+                        </div>
+
+                        <div id="emptyState" class="empty-state">
+                            <i class="fas fa-database empty-icon"></i>
+                            <p>Select a prompt or folder to view its contents</p>
+                        </div>
+                    </div>
+
+                    <div id="most-used-tab" class="tab-content">
+                        <div class="most-used-content">
+                            <h2>Most Used Prompts</h2>
+                            <div id="mostUsedList" class="most-used-list"></div>
+                            <div id="noUsageState" class="empty-state">
+                                <i class="fas fa-copy empty-icon"></i>
+                                <p>No prompts have been copied yet</p>
+                                <p class="empty-subtitle">Start copying prompts to see usage statistics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="addPromptModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Prompt</h3>
+                <button class="modal-close" onclick="closeModal('addPromptModal')">&times;</button>
+            </div>
+            <form onsubmit="addPrompt(event)">
+                <div class="form-group">
+                    <label for="promptName">Prompt Name</label>
+                    <input type="text" id="promptName" required>
+                </div>
+                <div class="form-group">
+                    <label for="promptTextArea">Prompt Text</label>
+                    <textarea id="promptTextArea" rows="6" required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('addPromptModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Prompt
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addFolderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Folder</h3>
+                <button class="modal-close" onclick="closeModal('addFolderModal')">&times;</button>
+            </div>
+            <form onsubmit="addFolder(event)">
+                <div class="form-group">
+                    <label for="folderName">Folder Name</label>
+                    <input type="text" id="folderName" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('addFolderModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Create Folder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editPromptModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Prompt</h3>
+                <button class="modal-close" onclick="closeModal('editPromptModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="editPromptName">Prompt Name</label>
+                <input type="text" id="editPromptName">
+            </div>
+            <div class="form-group">
+                <label for="editPromptText">Prompt Text</label>
+                <textarea id="editPromptText" rows="6"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('editPromptModal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveEdit()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Deletion</h3>
+                <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteMessage"></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="versionHistoryModal" class="modal modal-large">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="versionHistoryTitle">Version History</h3>
+                <button class="modal-close" onclick="closeModal('versionHistoryModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="versionsList" class="versions-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
