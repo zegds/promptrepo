@@ -2,12 +2,15 @@ from flask import Flask, jsonify, request, render_template
 import os
 import json
 import time
+from pathlib import Path
 
 app = Flask(__name__)
 
-DATA_FILE = 'config.json'
-COOLDOWN_MINUTES = 3
+DOCUMENTS_DIR = Path.home() / 'Documents' / 'PromptData'
+DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
+DATA_FILE = DOCUMENTS_DIR / 'config.json'
 
+COOLDOWN_MINUTES = 3
 
 def load_data():
     if os.path.exists(DATA_FILE):
