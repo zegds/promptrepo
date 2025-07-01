@@ -4,8 +4,10 @@ let selectedPrompt = null;
 let selectedFolder = null;
 let searchQuery = '';
 let activeTab = 'repository';
+let draggedFolder = null;
 let draggedPrompt = null;
 let deleteTarget = null;
+let folderDropZones = [];
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -91,18 +93,31 @@ function renderPromptList() {
     let html = '';
     
     // Add root prompts
-    html += '<div class="root-prompts" ondrop="handleDrop(event)" ondragover="handleDragOver(event)">';
+    html += '<div class="root-prompts" ondrop="handlePromptDrop(event)" ondragover="handleDragOver(event)">';
     rootPrompts.forEach(prompt => {
         html += renderPromptItem(prompt);
     });
     html += '</div>';
     
-    // Add folders
-    data.folders.forEach(folder => {
+    // Add folders with drop zones
+    data.folders.forEach((folder, index) => {
+        // Add drop zone before folder
+        html += `<div class="folder-drop-zone" 
+                     ondrop="handleFolderDrop(event, ${index})" 
+                     ondragover="handleFolderDragOver(event)"
+                     ondragleave="handleFolderDragLeave(event)"></div>`;
+        
         const folderPrompts = filteredPrompts.filter(p => p.folderId === folder.id);
-        html += renderFolderItem(folder, folderPrompts);
+        html += renderFolderItem(folder, folderPrompts, index);
     });
-    
+     
+    // Add final drop zone after all folders
+    if (data.folders.length > 0) {
+        html += `<div class="folder-drop-zone" 
+                     ondrop="handleFolderDrop(event, ${data.folders.length})" 
+                     ondragover="handleFolderDragOver(event)"
+                     ondragleave="handleFolderDragLeave(event)"></div>`;
+    }
     container.innerHTML = html;
 }
 
@@ -118,7 +133,8 @@ function renderPromptItem(prompt) {
     return `
         <div class="prompt-item ${isSelected ? 'selected' : ''}" 
              draggable="true"
-             ondragstart="handleDragStart(event, '${prompt.id}')"
+             ondragstart="handlePromptDragStart(event, '${prompt.id}')"
+             ondragend="handleDragEnd(event)"
              onclick="selectPrompt('${prompt.id}')">
             <i class="fas fa-file-text"></i>
             <span class="prompt-name">${escapeHtml(prompt.name)}</span>
@@ -131,15 +147,19 @@ function renderPromptItem(prompt) {
     `;
 }
 
-function renderFolderItem(folder, folderPrompts) {
+function renderFolderItem(folder, folderPrompts, index) {
     const isSelected = selectedFolder === folder.id;
     const icon = folder.expanded ? 'fa-folder-open' : 'fa-folder';
     
     let html = `
         <div class="folder-item ${isSelected ? 'selected' : ''}"
-             ondrop="handleDrop(event, '${folder.id}')"
+             draggable="true"
+             ondragstart="handleFolderDragStart(event, '${folder.id}', ${index})"
+             ondragend="handleDragEnd(event)"
+             ondrop="handlePromptDrop(event, '${folder.id}')"
              ondragover="handleDragOver(event)"
              onclick="toggleFolder('${folder.id}')">
+             <i class="fas fa-grip-vertical folder-drag-handle"></i>
             <i class="fas ${icon}"></i>
             <span class="folder-name">${escapeHtml(folder.name)}</span>
             <span class="version-badge">${folderPrompts.length}</span>
@@ -558,22 +578,29 @@ async function restoreVersion(promptId, versionId) {
     }
 }
 
-// Drag and drop
-function handleDragStart(event, promptId) {
+// Drag and drop for prompts
+function handlePromptDragStart(event, promptId) {
     draggedPrompt = promptId;
     event.target.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
 }
 
 function handleDragOver(event) {
     event.preventDefault();
-    event.currentTarget.classList.add('drag-over');
+    event.dataTransfer.dropEffect = 'move';
+    if (!event.currentTarget.classList.contains('drag-over')) {
+        event.currentTarget.classList.add('drag-over');
+    }
 }
 
 function handleDragLeave(event) {
-    event.currentTarget.classList.remove('drag-over');
+    // Only remove drag-over if we're actually leaving the element
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        event.currentTarget.classList.remove('drag-over');
+    }
 }
 
-async function handleDrop(event, folderId = null) {
+async function handlePromptDrop(event, folderId = null) {
     event.preventDefault();
     event.currentTarget.classList.remove('drag-over');
     
@@ -590,7 +617,76 @@ async function handleDrop(event, folderId = null) {
     }
     
     draggedPrompt = null;
-    document.querySelector('.dragging')?.classList.remove('dragging');
+}
+
+function handleDragEnd(event) {
+    event.target.classList.remove('dragging');
+    // Clean up any remaining drag-over classes
+    document.querySelectorAll('.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+    });
+    document.querySelectorAll('.folder-drop-zone.active').forEach(el => {
+        el.classList.remove('active');
+    });
+}
+
+// Drag and drop for folders
+function handleFolderDragStart(event, folderId, index) {
+    draggedFolder = { id: folderId, index: index };
+    event.target.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.stopPropagation(); // Prevent folder toggle
+}
+
+function handleFolderDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    event.currentTarget.classList.add('active');
+}
+
+function handleFolderDragLeave(event) {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        event.currentTarget.classList.remove('active');
+    }
+}
+
+async function handleFolderDrop(event, newIndex) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('active');
+    
+    if (!draggedFolder || draggedFolder.index === newIndex) {
+        return;
+    }
+    
+    // Create new folder order array
+    const folderOrders = [];
+    const folders = [...data.folders];
+    
+    // Remove dragged folder from its current position
+    const [movedFolder] = folders.splice(draggedFolder.index, 1);
+    
+    // Insert at new position
+    folders.splice(newIndex, 0, movedFolder);
+    
+    // Create order mapping
+    folders.forEach((folder, index) => {
+        folderOrders.push({
+            id: folder.id,
+            order: index
+        });
+    });
+    
+    const result = await apiCall('/api/folders/reorder', {
+        method: 'POST',
+        body: JSON.stringify({ folderOrders })
+    });
+    
+    if (result) {
+        await loadData();
+        showToast('Folder order updated');
+    }
+    
+    draggedFolder = null;
 }
 
 // Modal functions
