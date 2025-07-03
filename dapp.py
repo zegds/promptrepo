@@ -9,7 +9,6 @@ app = Flask(__name__)
 DOCUMENTS_DIR = Path.home() / 'Documents' / 'PromptData'
 DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
 DATA_FILE = DOCUMENTS_DIR / 'config.json'
-
 COOLDOWN_MINUTES = 3
 
 def load_data():
@@ -80,10 +79,18 @@ def get_folder_hierarchy():
 def index():
     return render_template('index.html')
 
+# API Routes
+
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """Get all prompts and folders"""
     return jsonify(load_data())
+
+@app.route('/api/prompts', methods=['GET'])
+def get_prompts():
+    """Get all prompts"""
+    data = load_data()
+    return jsonify(data.get('prompts', []))
 
 @app.route('/api/prompts', methods=['POST'])
 def add_prompt():
@@ -110,7 +117,7 @@ def add_prompt():
     
     data['prompts'].append(new_prompt)
     save_data(data)
-    return jsonify(new_prompt)
+    return jsonify({'success': True, 'id': new_prompt['id']})
 
 @app.route('/api/prompts/<prompt_id>', methods=['PUT'])
 def update_prompt(prompt_id):
@@ -166,6 +173,39 @@ def copy_prompt(prompt_id):
     save_data(data)
     return jsonify({'success': True})
 
+@app.route('/api/prompts/<prompt_id>/use', methods=['POST'])
+def use_prompt(prompt_id):
+    """Track prompt usage (alias for copy)"""
+    return copy_prompt(prompt_id)
+
+@app.route('/api/prompts/<prompt_id>/versions', methods=['GET'])
+def get_prompt_versions(prompt_id):
+    """Get all versions of a prompt"""
+    data = load_data()
+    
+    for prompt in data['prompts']:
+        if prompt['id'] == prompt_id:
+            versions = prompt.get('versions', [])
+            current_version = prompt.get('currentVersion', 1)
+            
+            # Mark current version and format for frontend
+            formatted_versions = []
+            for version in versions:
+                formatted_version = {
+                    'version': version['version'],
+                    'name': version['name'],
+                    'content': version['text'],  # Map 'text' to 'content' for frontend
+                    'created_at': version['timestamp'],
+                    'is_current': version['version'] == current_version
+                }
+                formatted_versions.append(formatted_version)
+            
+            # Sort by version descending
+            formatted_versions.sort(key=lambda x: x['version'], reverse=True)
+            return jsonify(formatted_versions)
+    
+    return jsonify([])
+
 @app.route('/api/prompts/<prompt_id>/restore/<version_id>', methods=['POST'])
 def restore_version(prompt_id, version_id):
     """Restore a prompt to a previous version"""
@@ -182,6 +222,58 @@ def restore_version(prompt_id, version_id):
     
     save_data(data)
     return jsonify({'success': True})
+
+@app.route('/api/prompts/<prompt_id>/revert', methods=['POST'])
+def revert_prompt_version(prompt_id):
+    """Revert to a specific version and create a new version entry"""
+    data = load_data()
+    target_version = request.json.get('version')
+    
+    if not target_version:
+        return jsonify({'success': False, 'error': 'Version number is required'})
+    
+    for prompt in data['prompts']:
+        if prompt['id'] == prompt_id:
+            # Find the target version
+            target_version_data = None
+            for version in prompt['versions']:
+                if version['version'] == target_version:
+                    target_version_data = version
+                    break
+            
+            if not target_version_data:
+                return jsonify({'success': False, 'error': 'Version not found'})
+            
+            # Create a new version based on the target
+            new_version = prompt['currentVersion'] + 1
+            now = int(time.time() * 1000)
+            
+            new_version_entry = {
+                'id': f"{now}-v{new_version}",
+                'name': target_version_data['name'],
+                'text': target_version_data['text'],
+                'timestamp': now,
+                'version': new_version
+            }
+            
+            # Update prompt
+            prompt['name'] = target_version_data['name']
+            prompt['text'] = target_version_data['text']
+            prompt['versions'].append(new_version_entry)
+            prompt['currentVersion'] = new_version
+            
+            save_data(data)
+            return jsonify({'success': True})
+    
+    return jsonify({'success': False, 'error': 'Prompt not found'})
+
+# Folder API Routes
+
+@app.route('/api/folders', methods=['GET'])
+def get_folders():
+    """Get all folders"""
+    data = load_data()
+    return jsonify(data.get('folders', []))
 
 @app.route('/api/folders', methods=['POST'])
 def add_folder():
@@ -204,7 +296,21 @@ def add_folder():
     
     data['folders'].append(new_folder)
     save_data(data)
-    return jsonify(new_folder)
+    return jsonify({'success': True, 'id': new_folder['id']})
+
+@app.route('/api/folders/<folder_id>', methods=['PUT'])
+def update_folder(folder_id):
+    """Update folder name"""
+    data = load_data()
+    updates = request.json
+    
+    for folder in data['folders']:
+        if folder['id'] == folder_id:
+            folder['name'] = updates.get('name', folder['name'])
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
 
 @app.route('/api/folders/<folder_id>', methods=['DELETE'])
 def delete_folder(folder_id):
@@ -345,6 +451,54 @@ def move_folder(folder_id):
     save_data(data)
     return jsonify({'success': True})
 
+@app.route('/api/folders/move', methods=['POST'])
+def move_folder_api():
+    """Move folder to different parent (drag & drop endpoint)"""
+    data_request = request.get_json()
+    folder_id = data_request.get('folder_id')
+    parent_id = data_request.get('parent_id')
+    
+    if not folder_id:
+        return jsonify({'success': False, 'error': 'Folder ID is required'})
+    
+    data = load_data()
+    
+    # Find the folder
+    folder = None
+    for f in data['folders']:
+        if f['id'] == folder_id:
+            folder = f
+            break
+    
+    if not folder:
+        return jsonify({'success': False, 'error': 'Folder not found'})
+    
+    # Check for circular reference
+    def would_create_cycle(folder_id, target_parent_id):
+        if target_parent_id is None:
+            return False
+        if target_parent_id == folder_id:
+            return True
+        
+        for f in data['folders']:
+            if f['id'] == target_parent_id:
+                return would_create_cycle(folder_id, f.get('parentId'))
+        return False
+    
+    if would_create_cycle(folder_id, parent_id):
+        return jsonify({'success': False, 'error': 'Cannot create circular reference'})
+    
+    # Update parent
+    folder['parentId'] = parent_id
+    
+    # Update order to be last in new parent
+    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id and f['id'] != folder_id]
+    max_order = max([f.get('order', 0) for f in siblings], default=-1)
+    folder['order'] = max_order + 1
+    
+    save_data(data)
+    return jsonify({'success': True})
+
 @app.route('/api/prompts/<prompt_id>/move', methods=['POST'])
 def move_prompt(prompt_id):
     """Move prompt to folder"""
@@ -359,5 +513,44 @@ def move_prompt(prompt_id):
     save_data(data)
     return jsonify({'success': True})
 
+@app.route('/api/prompts/move', methods=['POST'])
+def move_prompt_api():
+    """Move prompt to folder (drag & drop endpoint)"""
+    data_request = request.get_json()
+    prompt_id = data_request.get('prompt_id')
+    folder_id = data_request.get('folder_id')
+    
+    if not prompt_id:
+        return jsonify({'success': False, 'error': 'Prompt ID is required'})
+    
+    data = load_data()
+    
+    for prompt in data['prompts']:
+        if prompt['id'] == prompt_id:
+            prompt['folderId'] = folder_id
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/folders/reorder', methods=['POST'])
+def reorder_folder():
+    """Update folder order"""
+    data = load_data()
+    folder_id = request.json.get('folder_id')
+    new_order = request.json.get('new_order')
+    
+    if not folder_id or new_order is None:
+        return jsonify({'success': False, 'error': 'Folder ID and new order are required'})
+    
+    for folder in data['folders']:
+        if folder['id'] == folder_id:
+            folder['order'] = new_order
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
 if __name__ == '__main__':
     app.run(debug=True)
+
