@@ -1,778 +1,1002 @@
-// Global state
-let data = { prompts: [], folders: [] };
-let selectedPrompt = null;
-let selectedFolder = null;
-let searchQuery = '';
-let activeTab = 'repository';
-let draggedPrompt = null;
-let draggedFolder = null;
-let deleteTarget = null;
+// Global variables
+let currentPrompt = null
+let currentFolder = null
+let folders = []
+let prompts = []
+let draggedElement = null
+let draggedType = null // 'folder' or 'prompt'
 
-// Initialize app
-document.addEventListener('DOMContentLoaded', function() {
-    loadData();
-    setupEventListeners();
-});
+// Initialize the application
+document.addEventListener("DOMContentLoaded", () => {
+  loadData()
+  setupEventListeners()
+  setupSearch()
+  setupTabs()
+})
 
-// API calls
-async function apiCall(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('API call failed:', error);
-        showToast('An error occurred. Please try again.');
-        return null;
-    }
+// Load data from the server
+function loadData() {
+  Promise.all([fetch("/api/prompts").then((r) => r.json()), fetch("/api/folders").then((r) => r.json())])
+    .then(([promptsData, foldersData]) => {
+      prompts = promptsData
+      folders = foldersData
+      renderSidebar()
+      renderMostUsed()
+    })
+    .catch((error) => {
+      console.error("Error loading data:", error)
+      showToast("Error loading data")
+    })
 }
 
-async function loadData() {
-    const result = await apiCall('/api/data');
-    if (result) {
-        data = result;
-        renderPromptList();
-        renderMostUsed();
-    }
-}
-
-// Event listeners
+// Setup event listeners
 function setupEventListeners() {
-    // Close modals when clicking outside
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            closeModal(e.target.id);
-        }
-    });
+  // Sidebar toggle
+  document.getElementById("sidebarToggle").addEventListener("click", toggleSidebar)
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const openModal = document.querySelector('.modal.show');
-            if (openModal) {
-                closeModal(openModal.id);
-            }
-        }
-    });
+  // Add prompt button
+  document.getElementById("addPromptBtn").addEventListener("click", showAddPromptModal)
+
+  // Add folder button
+  document.getElementById("addFolderBtn").addEventListener("click", showAddFolderModal)
+
+  // Modal close buttons
+  document.querySelectorAll(".modal-close").forEach((btn) => {
+    btn.addEventListener("click", closeModals)
+  })
+
+  // Modal background clicks
+  document.querySelectorAll(".modal").forEach((modal) => {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModals()
+    })
+  })
+
+  // Form submissions
+  document.getElementById("promptForm").addEventListener("submit", handlePromptSubmit)
+  document.getElementById("folderForm").addEventListener("submit", handleFolderSubmit)
+  document.getElementById("editPromptForm").addEventListener("submit", handleEditPromptSubmit)
+  document.getElementById("editFolderForm").addEventListener("submit", handleEditFolderSubmit)
 }
 
-// Search functionality
-function handleSearch() {
-    searchQuery = document.getElementById('searchInput').value;
-    renderPromptList();
+// Setup search functionality
+function setupSearch() {
+  const searchInput = document.getElementById("searchInput")
+  searchInput.addEventListener("input", function () {
+    const query = this.value.toLowerCase()
+    filterSidebar(query)
+  })
 }
 
-function getFilteredPrompts() {
-    if (!searchQuery) return data.prompts;
-
-    const nameMatches = data.prompts.filter(prompt => 
-        prompt.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (nameMatches.length > 0) return nameMatches;
-
-    return data.prompts.filter(prompt => 
-        prompt.text.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+// Setup tabs
+function setupTabs() {
+  document.querySelectorAll(".tab-trigger").forEach((trigger) => {
+    trigger.addEventListener("click", function () {
+      const tabId = this.dataset.tab
+      switchTab(tabId)
+    })
+  })
 }
 
-// Helper function to build folder hierarchy
-function buildFolderHierarchy() {
-    const folderMap = {};
-    const rootFolders = [];
-    
-    // Create folder map and initialize children arrays
-    data.folders.forEach(folder => {
-        folderMap[folder.id] = { ...folder, children: [] };
-    });
-    
-    // Build hierarchy
-    data.folders.forEach(folder => {
-        if (folder.parentId && folderMap[folder.parentId]) {
-            folderMap[folder.parentId].children.push(folderMap[folder.id]);
-        } else {
-            rootFolders.push(folderMap[folder.id]);
-        }
-    });
-    
-    // Sort each level by order
-    function sortChildren(folders) {
-        folders.sort((a, b) => (a.order || 0) - (b.order || 0));
-        folders.forEach(folder => {
-            if (folder.children.length > 0) {
-                sortChildren(folder.children);
-            }
-        });
-    }
-    
-    sortChildren(rootFolders);
-    return rootFolders;
-}
+// Render sidebar with folders and prompts
+function renderSidebar() {
+  const foldersContainer = document.getElementById("foldersContainer")
+  const promptsContainer = document.getElementById("promptsContainer")
 
-// Helper function to get all prompts in a folder (including subfolders)
-function getPromptsInFolder(folderId, includeSubfolders = false) {
-    let prompts = data.prompts.filter(p => p.folderId === folderId);
-    
-    if (includeSubfolders) {
-        const subfolders = data.folders.filter(f => f.parentId === folderId);
-        subfolders.forEach(subfolder => {
-            prompts = prompts.concat(getPromptsInFolder(subfolder.id, true));
-        });
-    }
-    
-    return prompts;
-}
+  // Render folders (only root level folders)
+  const rootFolders = folders.filter((f) => !f.parent_id).sort((a, b) => (a.order || 0) - (b.order || 0))
+  foldersContainer.innerHTML = rootFolders.map((folder) => renderFolder(folder)).join("")
 
-// Render functions
-function renderPromptList() {
-    const container = document.getElementById('promptList');
-    const filteredPrompts = getFilteredPrompts();
-    
-    // Get root level prompts
-    const rootPrompts = filteredPrompts.filter(p => !p.folderId);
-    
-    let html = '';
-    
-    // Add root prompts
-    html += '<div class="root-prompts" ondrop="handlePromptDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">';
-    rootPrompts.forEach(prompt => {
-        html += renderPromptItem(prompt);
-    });
-    html += '</div>';
-    
-    // Add folders hierarchy
-    const folderHierarchy = buildFolderHierarchy();
-    html += renderFolderHierarchy(folderHierarchy, filteredPrompts);
-    
-    container.innerHTML = html;
-}
-
-function renderFolderHierarchy(folders, filteredPrompts, level = 0) {
-    let html = '';
-    
-    folders.forEach((folder, index) => {
-        html += renderFolderItem(folder, filteredPrompts, level, index, folders.length);
-        
-        if (folder.expanded && folder.children.length > 0) {
-            html += '<div class="folder-children" style="margin-left: ' + (20 + level * 16) + 'px;">';
-            html += renderFolderHierarchy(folder.children, filteredPrompts, level + 1);
-            html += '</div>';
-        }
-    });
-    
-    return html;
-}
-
-function renderPromptItem(prompt) {
-    const isSelected = selectedPrompt && selectedPrompt.id === prompt.id;
-    
-    return `
-        <div class="prompt-item ${isSelected ? 'selected' : ''}" 
-             draggable="true"
-             ondragstart="handlePromptDragStart(event, '${prompt.id}')"
-             ondragend="handleDragEnd(event)"
-             onclick="selectPrompt('${prompt.id}')">
-            <i class="fas fa-file-text"></i>
-            <span class="prompt-name">${escapeHtml(prompt.name)}</span>
-            <button class="delete-btn" onclick="event.stopPropagation(); confirmDeletePrompt('${prompt.id}', '${escapeHtml(prompt.name)}')">
-                <i class="fas fa-times"></i>
-            </button>
+  // Render root level prompts (prompts not in any folder)
+  const rootPrompts = prompts.filter((p) => !p.folder_id)
+  promptsContainer.innerHTML = `
+        <div class="root-prompts" data-drop-zone="root">
+            ${rootPrompts.map((prompt) => renderPrompt(prompt)).join("")}
         </div>
-    `;
+    `
+
+  setupDragAndDrop()
 }
 
-function renderFolderItem(folder, filteredPrompts, level, index, totalSiblings) {
-    const isSelected = selectedFolder === folder.id;
-    const icon = folder.expanded ? 'fa-folder-open' : 'fa-folder';
-    const folderPrompts = getPromptsInFolder(folder.id, true);
-    const promptCount = folderPrompts.length;
-    
-    // Check if folder can move up/down
-    const canMoveUp = index > 0;
-    const canMoveDown = index < totalSiblings - 1;
-    
-    let html = `
-        <div class="folder-item ${isSelected ? 'selected' : ''}"
-             ondrop="handleFolderDrop(event, '${folder.id}')"
-             ondragover="handleDragOver(event)"
-             ondragleave="handleDragLeave(event)"
-             onclick="toggleFolder('${folder.id}')">
+// Render a single folder with its children
+function renderFolder(folder, level = 0) {
+  const childFolders = folders.filter((f) => f.parent_id === folder.id).sort((a, b) => (a.order || 0) - (b.order || 0))
+  const folderPrompts = prompts.filter((p) => p.folder_id === folder.id)
+  const totalPrompts = folderPrompts.length + getNestedPromptCount(folder.id)
+
+  const isNested = level > 0
+  const indentClass = level > 0 ? "folder-children" : ""
+
+  return `
+        <div class="folder-item ${indentClass}" 
+             data-folder-id="${folder.id}" 
+             data-level="${level}"
+             draggable="true">
+            <i class="fas fa-folder"></i>
+            <span class="folder-name">${folder.name}</span>
+            <span class="folder-count">${totalPrompts}</span>
             <div class="folder-controls">
-                <button class="folder-move-btn ${!canMoveUp ? 'disabled' : ''}" 
-                        onclick="event.stopPropagation(); moveFolderUp('${folder.id}')"
-                        ${!canMoveUp ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-up"></i>
-                </button>
-                <button class="folder-move-btn ${!canMoveDown ? 'disabled' : ''}" 
-                        onclick="event.stopPropagation(); moveFolderDown('${folder.id}')"
-                        ${!canMoveDown ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-down"></i>
-                </button>
+                ${renderFolderControls(folder, level)}
             </div>
-            <i class="fas ${icon}"></i>
-            <span class="folder-name">${escapeHtml(folder.name)}</span>
-            <span class="folder-count">${promptCount}</span>
-            <button class="delete-btn" onclick="event.stopPropagation(); confirmDeleteFolder('${folder.id}', '${escapeHtml(folder.name)}')">
+            <button class="delete-btn" onclick="deleteFolder(${folder.id})">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-    `;
-    
-    if (folder.expanded) {
-        const directPrompts = filteredPrompts.filter(p => p.folderId === folder.id);
-        if (directPrompts.length > 0) {
-            html += '<div class="folder-children" style="margin-left: ' + (20 + level * 16) + 'px;">';
-            directPrompts.forEach(prompt => {
-                html += renderPromptItem(prompt);
-            });
-            html += '</div>';
-        }
-    }
-    
-    return html;
-}
-
-function renderMostUsed() {
-    const mostUsedPrompts = [...data.prompts]
-        .filter(prompt => prompt.usageCount > 0)
-        .sort((a, b) => b.usageCount - a.usageCount);
-    
-    const container = document.getElementById('mostUsedList');
-    const noUsageState = document.getElementById('noUsageState');
-    
-    if (mostUsedPrompts.length === 0) {
-        container.style.display = 'none';
-        noUsageState.style.display = 'flex';
-        return;
-    }
-    
-    container.style.display = 'block';
-    noUsageState.style.display = 'none';
-    
-    let html = '';
-    mostUsedPrompts.forEach((prompt, index) => {
-        const preview = prompt.text.substring(0, 100) + (prompt.text.length > 100 ? '...' : '');
-        html += `
-            <div class="most-used-item" onclick="selectPromptFromMostUsed('${prompt.id}')">
-                <div class="most-used-info">
-                    <span class="rank-number">#${index + 1}</span>
-                    <i class="fas fa-file-text"></i>
-                    <div class="most-used-details">
-                        <div class="most-used-name">${escapeHtml(prompt.name)}</div>
-                        <div class="most-used-preview">${escapeHtml(preview)}</div>
-                    </div>
-                </div>
-                <div class="most-used-actions">
-                    <span class="usage-count">${prompt.usageCount} uses</span>
-                    <button class="btn btn-outline" onclick="event.stopPropagation(); copyPromptById('${prompt.id}')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
+        ${childFolders.map((child) => renderFolder(child, level + 1)).join("")}
+        ${
+          folderPrompts.length > 0
+            ? `
+            <div class="folder-prompts-container" data-folder-id="${folder.id}">
+                ${folderPrompts.map((prompt) => renderPrompt(prompt, level + 1)).join("")}
             </div>
-        `;
-    });
-    
-    container.innerHTML = html;
+        `
+            : ""
+        }
+    `
 }
 
-// Selection functions
+// Render folder control buttons (up/down/out arrows)
+function renderFolderControls(folder, level) {
+  const siblings = folders.filter((f) => f.parent_id === folder.parent_id)
+  const currentIndex = siblings.findIndex((f) => f.id === folder.id)
+  const isFirst = currentIndex === 0
+  const isLast = currentIndex === siblings.length - 1
+  const isNested = level > 0
+
+  return `
+        <button class="folder-move-btn ${isFirst ? "disabled" : ""}" 
+                onclick="moveFolderUp(${folder.id})" 
+                ${isFirst ? "disabled" : ""}>
+            <i class="fas fa-chevron-up"></i>
+        </button>
+        <button class="folder-move-btn ${isLast ? "disabled" : ""}" 
+                onclick="moveFolderDown(${folder.id})" 
+                ${isLast ? "disabled" : ""}>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+        ${
+          isNested
+            ? `
+            <button class="folder-move-btn" onclick="moveFolderOut(${folder.id})">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        `
+            : ""
+        }
+    `
+}
+
+// Render a single prompt
+function renderPrompt(prompt, level = 0) {
+  const indentClass = level > 0 ? "folder-children" : ""
+  return `
+        <div class="prompt-item ${indentClass} ${currentPrompt?.id === prompt.id ? "selected" : ""}" 
+             data-prompt-id="${prompt.id}"
+             data-level="${level}"
+             draggable="true"
+             onclick="selectPrompt(${prompt.id})">
+            <i class="fas fa-file-text"></i>
+            <span class="prompt-name">${prompt.name}</span>
+            <button class="delete-btn" onclick="deletePrompt(${prompt.id})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `
+}
+
+// Setup drag and drop functionality
+function setupDragAndDrop() {
+  // Setup draggable elements
+  document.querySelectorAll(".folder-item, .prompt-item").forEach((item) => {
+    item.addEventListener("dragstart", handleDragStart)
+    item.addEventListener("dragend", handleDragEnd)
+  })
+
+  // Setup drop zones
+  document.querySelectorAll(".folder-item, .root-prompts").forEach((zone) => {
+    zone.addEventListener("dragover", handleDragOver)
+    zone.addEventListener("drop", handleDrop)
+    zone.addEventListener("dragenter", handleDragEnter)
+    zone.addEventListener("dragleave", handleDragLeave)
+  })
+}
+
+// Handle drag start
+function handleDragStart(e) {
+  draggedElement = e.target
+  draggedType = e.target.classList.contains("folder-item") ? "folder" : "prompt"
+
+  e.target.classList.add("dragging")
+  e.dataTransfer.effectAllowed = "move"
+
+  // Set drag data
+  if (draggedType === "folder") {
+    e.dataTransfer.setData("text/plain", `folder:${e.target.dataset.folderId}`)
+  } else {
+    e.dataTransfer.setData("text/plain", `prompt:${e.target.dataset.promptId}`)
+  }
+}
+
+// Handle drag end
+function handleDragEnd(e) {
+  e.target.classList.remove("dragging")
+
+  // Remove all drag-over classes
+  document.querySelectorAll(".drag-over").forEach((el) => {
+    el.classList.remove("drag-over")
+  })
+
+  draggedElement = null
+  draggedType = null
+}
+
+// Handle drag over
+function handleDragOver(e) {
+  e.preventDefault()
+  e.dataTransfer.dropEffect = "move"
+}
+
+// Handle drag enter
+function handleDragEnter(e) {
+  e.preventDefault()
+
+  if (canDropOn(e.target)) {
+    e.target.classList.add("drag-over")
+  }
+}
+
+// Handle drag leave
+function handleDragLeave(e) {
+  // Only remove drag-over if we're actually leaving the element
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove("drag-over")
+  }
+}
+
+// Handle drop
+function handleDrop(e) {
+  e.preventDefault()
+  e.stopPropagation()
+
+  const dropTarget = e.currentTarget
+  dropTarget.classList.remove("drag-over")
+
+  if (!canDropOn(dropTarget) || !draggedElement) return
+
+  const dragData = e.dataTransfer.getData("text/plain")
+  const [dragType, dragId] = dragData.split(":")
+
+  if (dragType === "folder") {
+    handleFolderDrop(Number.parseInt(dragId), dropTarget)
+  } else if (dragType === "prompt") {
+    handlePromptDrop(Number.parseInt(dragId), dropTarget)
+  }
+}
+
+// Check if we can drop on the target
+function canDropOn(target) {
+  if (!draggedElement) return false
+
+  // Can't drop on self
+  if (target === draggedElement) return false
+
+  // If dragging a folder
+  if (draggedType === "folder") {
+    const draggedFolderId = Number.parseInt(draggedElement.dataset.folderId)
+
+    // Can't drop folder on its own children
+    if (target.classList.contains("folder-item")) {
+      const targetFolderId = Number.parseInt(target.dataset.folderId)
+      if (isChildFolder(targetFolderId, draggedFolderId)) return false
+    }
+
+    // Can drop on other folders or root
+    return target.classList.contains("folder-item") || target.classList.contains("root-prompts")
+  }
+
+  // If dragging a prompt
+  if (draggedType === "prompt") {
+    // Can drop on folders or root
+    return target.classList.contains("folder-item") || target.classList.contains("root-prompts")
+  }
+
+  return false
+}
+
+// Handle folder drop
+function handleFolderDrop(folderId, dropTarget) {
+  let newParentId = null
+
+  if (dropTarget.classList.contains("folder-item")) {
+    newParentId = Number.parseInt(dropTarget.dataset.folderId)
+  }
+
+  // Update folder parent
+  fetch("/api/folders/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      folder_id: folderId,
+      parent_id: newParentId,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        loadData() // Reload to reflect changes
+        showToast("Folder moved successfully")
+      } else {
+        showToast("Error moving folder")
+      }
+    })
+    .catch((error) => {
+      console.error("Error moving folder:", error)
+      showToast("Error moving folder")
+    })
+}
+
+// Handle prompt drop
+function handlePromptDrop(promptId, dropTarget) {
+  let newFolderId = null
+
+  if (dropTarget.classList.contains("folder-item")) {
+    newFolderId = Number.parseInt(dropTarget.dataset.folderId)
+  }
+
+  // Update prompt folder
+  fetch("/api/prompts/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt_id: promptId,
+      folder_id: newFolderId,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        loadData() // Reload to reflect changes
+        showToast("Prompt moved successfully")
+      } else {
+        showToast("Error moving prompt")
+      }
+    })
+    .catch((error) => {
+      console.error("Error moving prompt:", error)
+      showToast("Error moving prompt")
+    })
+}
+
+// Check if targetId is a child of parentId
+function isChildFolder(targetId, parentId) {
+  const targetFolder = folders.find((f) => f.id === targetId)
+  if (!targetFolder) return false
+
+  if (targetFolder.parent_id === parentId) return true
+  if (targetFolder.parent_id) {
+    return isChildFolder(targetFolder.parent_id, parentId)
+  }
+
+  return false
+}
+
+// Get nested prompt count for a folder
+function getNestedPromptCount(folderId) {
+  const childFolders = folders.filter((f) => f.parent_id === folderId)
+  let count = 0
+
+  childFolders.forEach((child) => {
+    count += prompts.filter((p) => p.folder_id === child.id).length
+    count += getNestedPromptCount(child.id)
+  })
+
+  return count
+}
+
+// Move folder up
+function moveFolderUp(folderId) {
+  const folder = folders.find((f) => f.id === folderId)
+  const siblings = folders.filter((f) => f.parent_id === folder.parent_id)
+  const currentIndex = siblings.findIndex((f) => f.id === folderId)
+
+  if (currentIndex > 0) {
+    // Swap orders
+    const prevFolder = siblings[currentIndex - 1]
+    const tempOrder = folder.order || currentIndex
+
+    fetch("/api/folders/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        folder_id: folderId,
+        new_order: prevFolder.order || currentIndex - 1,
+      }),
+    })
+      .then(() => {
+        return fetch("/api/folders/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            folder_id: prevFolder.id,
+            new_order: tempOrder,
+          }),
+        })
+      })
+      .then(() => {
+        loadData()
+        showToast("Folder moved up")
+      })
+      .catch((error) => {
+        console.error("Error moving folder:", error)
+        showToast("Error moving folder")
+      })
+  }
+}
+
+// Move folder down
+function moveFolderDown(folderId) {
+  const folder = folders.find((f) => f.id === folderId)
+  const siblings = folders.filter((f) => f.parent_id === folder.parent_id)
+  const currentIndex = siblings.findIndex((f) => f.id === folderId)
+
+  if (currentIndex < siblings.length - 1) {
+    // Swap orders
+    const nextFolder = siblings[currentIndex + 1]
+    const tempOrder = folder.order || currentIndex
+
+    fetch("/api/folders/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        folder_id: folderId,
+        new_order: nextFolder.order || currentIndex + 1,
+      }),
+    })
+      .then(() => {
+        return fetch("/api/folders/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            folder_id: nextFolder.id,
+            new_order: tempOrder,
+          }),
+        })
+      })
+      .then(() => {
+        loadData()
+        showToast("Folder moved down")
+      })
+      .catch((error) => {
+        console.error("Error moving folder:", error)
+        showToast("Error moving folder")
+      })
+  }
+}
+
+// Move folder out (remove nesting)
+function moveFolderOut(folderId) {
+  const folder = folders.find((f) => f.id === folderId)
+  const parentFolder = folders.find((f) => f.id === folder.parent_id)
+
+  fetch("/api/folders/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      folder_id: folderId,
+      parent_id: parentFolder ? parentFolder.parent_id : null,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        loadData()
+        showToast("Folder moved out")
+      } else {
+        showToast("Error moving folder")
+      }
+    })
+    .catch((error) => {
+      console.error("Error moving folder:", error)
+      showToast("Error moving folder")
+    })
+}
+
+// Select prompt
 function selectPrompt(promptId) {
-    selectedPrompt = data.prompts.find(p => p.id === promptId);
-    selectedFolder = null;
-    renderPromptList();
-    showPromptDetails();
+  currentPrompt = prompts.find((p) => p.id === promptId)
+  if (currentPrompt) {
+    renderPromptDetails()
+    renderSidebar() // Re-render to update selection
+    switchTab("prompt")
+  }
 }
 
-function selectPromptFromMostUsed(promptId) {
-    selectPrompt(promptId);
-    switchTab('repository');
-}
-
+// Select folder
 function selectFolder(folderId) {
-    selectedFolder = folderId;
-    selectedPrompt = null;
-    renderPromptList();
-    showFolderDetails();
+  currentFolder = folders.find((f) => f.id === folderId)
+  if (currentFolder) {
+    renderFolderDetails()
+    switchTab("folder")
+  }
 }
 
-function toggleFolder(folderId) {
-    const folder = data.folders.find(f => f.id === folderId);
-    if (folder) {
-        folder.expanded = !folder.expanded;
-        if (selectedFolder === folderId && !folder.expanded) {
-            selectedFolder = null;
-            showEmptyState();
-        } else if (selectedFolder !== folderId) {
-            selectFolder(folderId);
-        }
-        renderPromptList();
-    }
-}
+// Render prompt details
+function renderPromptDetails() {
+  if (!currentPrompt) return
 
-// Display functions
-function showPromptDetails() {
-    if (!selectedPrompt) return;
-    
-    document.getElementById('promptDetails').classList.remove('hidden');
-    document.getElementById('folderDetails').classList.add('hidden');
-    document.getElementById('emptyState').classList.add('hidden');
-    
-    document.getElementById('promptTitle').textContent = selectedPrompt.name;
-    document.getElementById('promptText').textContent = selectedPrompt.text;
-    
-    // Update badges
-    const badgesContainer = document.getElementById('promptBadges');
-    let badges = '';
-    
-    if (selectedPrompt.versions && selectedPrompt.versions.length > 1) {
-        badges += `<span class="prompt-badge version-info">v${selectedPrompt.currentVersion} of ${selectedPrompt.versions.length}</span>`;
-    }
-    
-    if (selectedPrompt.usageCount > 0) {
-        badges += `<span class="prompt-badge usage-info">Used ${selectedPrompt.usageCount} times</span>`;
-    }
-    
-    badgesContainer.innerHTML = badges;
-    
-    // Show/hide history button
-    const historyBtn = document.getElementById('historyBtn');
-    if (selectedPrompt.versions && selectedPrompt.versions.length > 1) {
-        historyBtn.classList.remove('hidden');
-    } else {
-        historyBtn.classList.add('hidden');
-    }
-}
-
-function showFolderDetails() {
-    if (!selectedFolder) return;
-    
-    const folder = data.folders.find(f => f.id === selectedFolder);
-    if (!folder) return;
-    
-    document.getElementById('promptDetails').classList.add('hidden');
-    document.getElementById('folderDetails').classList.remove('hidden');
-    document.getElementById('emptyState').classList.add('hidden');
-    
-    document.getElementById('folderTitle').textContent = folder.name + ' Folder';
-    
-    const folderPrompts = getPromptsInFolder(selectedFolder, true);
-    const container = document.getElementById('folderPrompts');
-    
-    let html = '';
-    folderPrompts.forEach(prompt => {
-        const usageBadge = prompt.usageCount > 0 
-            ? `<span class="usage-badge">${prompt.usageCount}</span>` 
-            : '';
-        const versionBadge = prompt.versions && prompt.versions.length > 1 
-            ? `<span class="version-badge">v${prompt.currentVersion}</span>` 
-            : '';
-        
-        html += `
-            <div class="folder-prompt-item" onclick="selectPrompt('${prompt.id}')">
-                <div class="folder-prompt-info">
-                    <i class="fas fa-file-text"></i>
-                    <span>${escapeHtml(prompt.name)}</span>
-                    ${versionBadge}
-                    ${usageBadge}
+  const container = document.getElementById("promptDetails")
+  container.innerHTML = `
+        <div class="prompt-header">
+            <div class="prompt-title-section">
+                <h2>${currentPrompt.name}</h2>
+                <div class="prompt-badges">
+                    <span class="prompt-badge version-info">v${currentPrompt.version}</span>
+                    <span class="prompt-badge usage-info">${currentPrompt.usage_count} uses</span>
                 </div>
             </div>
-        `;
-    });
-    
-    container.innerHTML = html;
+            <div class="prompt-actions">
+                <button class="btn btn-outline" onclick="copyPrompt()">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+                <button class="btn btn-outline" onclick="showEditPromptModal(${currentPrompt.id})">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn btn-outline" onclick="showVersionHistory(${currentPrompt.id})">
+                    <i class="fas fa-history"></i> History
+                </button>
+                <button class="btn btn-danger" onclick="deletePrompt(${currentPrompt.id})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+        <div class="prompt-content">
+            <pre>${currentPrompt.content}</pre>
+            <button class="prompt-copy-btn" onclick="copyPrompt()">
+                <i class="fas fa-copy"></i>
+            </button>
+        </div>
+    `
 }
 
-function showEmptyState() {
-    document.getElementById('promptDetails').classList.add('hidden');
-    document.getElementById('folderDetails').classList.add('hidden');
-    document.getElementById('emptyState').classList.remove('hidden');
-}
+// Render folder details
+function renderFolderDetails() {
+  if (!currentFolder) return
 
-// Tab switching
-function switchTab(tabName) {
-    activeTab = tabName;
-    
-    // Update tab triggers
-    document.querySelectorAll('.tab-trigger').forEach(trigger => {
-        trigger.classList.remove('active');
-    });
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-    
-    // Update tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-    
-    if (tabName === 'most-used') {
-        renderMostUsed();
-    }
-}
+  const folderPrompts = prompts.filter((p) => p.folder_id === currentFolder.id)
 
-// Folder movement functions
-async function moveFolderUp(folderId) {
-    const result = await apiCall(`/api/folders/${folderId}/move-up`, {
-        method: 'POST'
-    });
-    
-    if (result && result.success) {
-        await loadData();
-        showToast('Folder moved up');
-    }
-}
-
-async function moveFolderDown(folderId) {
-    const result = await apiCall(`/api/folders/${folderId}/move-down`, {
-        method: 'POST'
-    });
-    
-    if (result && result.success) {
-        await loadData();
-        showToast('Folder moved down');
-    }
-}
-
-// CRUD operations
-async function addPrompt(event) {
-    event.preventDefault();
-    
-    const name = document.getElementById('promptName').value;
-    const text = document.getElementById('promptTextArea').value;
-    
-    const result = await apiCall('/api/prompts', {
-        method: 'POST',
-        body: JSON.stringify({
-            name,
-            text,
-            folderId: selectedFolder
-        })
-    });
-    
-    if (result) {
-        await loadData();
-        closeModal('addPromptModal');
-        showToast('Prompt added successfully');
-        document.getElementById('promptName').value = '';
-        document.getElementById('promptTextArea').value = '';
-    }
-}
-
-async function addFolder(event) {
-    event.preventDefault();
-    
-    const name = document.getElementById('folderName').value;
-    
-    const result = await apiCall('/api/folders', {
-        method: 'POST',
-        body: JSON.stringify({ 
-            name,
-            parentId: selectedFolder 
-        })
-    });
-    
-    if (result) {
-        await loadData();
-        closeModal('addFolderModal');
-        showToast('Folder created successfully');
-        document.getElementById('folderName').value = '';
-    }
-}
-
-function editPrompt() {
-    if (!selectedPrompt) return;
-    
-    document.getElementById('editPromptName').value = selectedPrompt.name;
-    document.getElementById('editPromptText').value = selectedPrompt.text;
-    showModal('editPromptModal');
-}
-
-async function saveEdit() {
-    if (!selectedPrompt) return;
-    
-    const name = document.getElementById('editPromptName').value;
-    const text = document.getElementById('editPromptText').value;
-    
-    const result = await apiCall(`/api/prompts/${selectedPrompt.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name, text })
-    });
-    
-    if (result) {
-        await loadData();
-        closeModal('editPromptModal');
-        showToast('Prompt updated successfully');
-        
-        // Update selected prompt
-        selectedPrompt = data.prompts.find(p => p.id === selectedPrompt.id);
-        showPromptDetails();
-    }
-}
-
-async function copyPrompt() {
-    if (!selectedPrompt) return;
-    await copyPromptById(selectedPrompt.id);
-}
-
-async function copyPromptById(promptId) {
-    const prompt = data.prompts.find(p => p.id === promptId);
-    if (!prompt) return;
-    
-    try {
-        await navigator.clipboard.writeText(prompt.text);
-        
-        // Track usage
-        await apiCall(`/api/prompts/${promptId}/copy`, {
-            method: 'POST'
-        });
-        
-        await loadData();
-        showToast('Copied to clipboard');
-        
-        // Update display if this prompt is selected
-        if (selectedPrompt && selectedPrompt.id === promptId) {
-            selectedPrompt = data.prompts.find(p => p.id === promptId);
-            showPromptDetails();
-        }
-        
-        renderMostUsed();
-    } catch (error) {
-        showToast('Failed to copy to clipboard');
-    }
-}
-
-// Delete functions
-function confirmDeletePrompt(promptId, promptName) {
-    deleteTarget = { type: 'prompt', id: promptId, name: promptName };
-    document.getElementById('deleteMessage').innerHTML = `
-        Are you sure you want to delete prompt "<strong>${escapeHtml(promptName)}</strong>"?
-    `;
-    showModal('deleteModal');
-}
-
-function confirmDeleteFolder(folderId, folderName) {
-    deleteTarget = { type: 'folder', id: folderId, name: folderName };
-    document.getElementById('deleteMessage').innerHTML = `
-        Are you sure you want to delete folder "<strong>${escapeHtml(folderName)}</strong>"?
-        <br><small>All prompts and subfolders will be moved to the parent folder.</small>
-    `;
-    showModal('deleteModal');
-}
-
-function deleteCurrentPrompt() {
-    if (!selectedPrompt) return;
-    confirmDeletePrompt(selectedPrompt.id, selectedPrompt.name);
-}
-
-async function confirmDelete() {
-    if (!deleteTarget) return;
-    
-    let result;
-    if (deleteTarget.type === 'prompt') {
-        result = await apiCall(`/api/prompts/${deleteTarget.id}`, {
-            method: 'DELETE'
-        });
-    } else {
-        result = await apiCall(`/api/folders/${deleteTarget.id}`, {
-            method: 'DELETE'
-        });
-    }
-    
-    if (result) {
-        await loadData();
-        closeModal('deleteModal');
-        showToast(`${deleteTarget.type === 'prompt' ? 'Prompt' : 'Folder'} "${deleteTarget.name}" deleted successfully`);
-        
-        // Clear selection if deleted item was selected
-        if (deleteTarget.type === 'prompt' && selectedPrompt && selectedPrompt.id === deleteTarget.id) {
-            selectedPrompt = null;
-            showEmptyState();
-        } else if (deleteTarget.type === 'folder' && selectedFolder === deleteTarget.id) {
-            selectedFolder = null;
-            showEmptyState();
-        }
-        
-        deleteTarget = null;
-    }
-}
-
-// Version history
-function showVersionHistory() {
-    if (!selectedPrompt || !selectedPrompt.versions) return;
-    
-    document.getElementById('versionHistoryTitle').textContent = `Version History - ${selectedPrompt.name}`;
-    
-    const container = document.getElementById('versionsList');
-    let html = '';
-    
-    const sortedVersions = [...selectedPrompt.versions].reverse();
-    
-    sortedVersions.forEach(version => {
-        const isCurrent = version.version === selectedPrompt.currentVersion;
-        const currentBadge = isCurrent ? '<span class="current-badge">Current</span>' : '';
-        const restoreButton = !isCurrent ? 
-            `<button class="btn btn-outline" onclick="restoreVersion('${selectedPrompt.id}', '${version.id}')">
-                <i class="fas fa-undo"></i> Restore
-            </button>` : '';
-        
-        html += `
-            <div class="version-item">
-                <div class="version-header">
-                    <div class="version-info-left">
-                        <span class="version-number">Version ${version.version}</span>
-                        ${currentBadge}
+  const container = document.getElementById("folderDetails")
+  container.innerHTML = `
+        <h2>${currentFolder.name}</h2>
+        <div class="folder-prompts">
+            ${
+              folderPrompts.length > 0
+                ? folderPrompts
+                    .map(
+                      (prompt) => `
+                    <div class="folder-prompt-item" onclick="selectPrompt(${prompt.id})">
+                        <div class="folder-prompt-info">
+                            <i class="fas fa-file-text"></i>
+                            <span>${prompt.name}</span>
+                        </div>
+                        <div class="prompt-badges">
+                            <span class="prompt-badge version-info">v${prompt.version}</span>
+                            <span class="prompt-badge usage-info">${prompt.usage_count} uses</span>
+                        </div>
                     </div>
-                    <div class="version-info-right">
-                        <span class="version-timestamp">${new Date(version.timestamp).toLocaleString()}</span>
-                        ${restoreButton}
-                    </div>
-                </div>
-                <div class="version-details">
-                    <div class="version-field">
-                        <span class="version-field-label">Name:</span>
-                        <div class="version-field-content">${escapeHtml(version.name)}</div>
-                    </div>
-                    <div class="version-field">
-                        <span class="version-field-label">Content:</span>
-                        <div class="version-field-content">${escapeHtml(version.text)}</div>
-                    </div>
+                `,
+                    )
+                    .join("")
+                : '<div class="empty-state"><div class="empty-icon"><i class="fas fa-folder-open"></i></div><p>No prompts in this folder</p></div>'
+            }
+        </div>
+    `
+}
+
+// Render most used prompts
+function renderMostUsed() {
+  const mostUsed = [...prompts]
+    .filter((p) => p.usage_count > 0)
+    .sort((a, b) => b.usage_count - a.usage_count)
+    .slice(0, 10)
+
+  const container = document.getElementById("mostUsedList")
+
+  if (mostUsed.length === 0) {
+    container.innerHTML = `
+            <div class="no-usage-state">
+                <i class="fas fa-chart-bar"></i>
+                <h3>No Usage Data</h3>
+                <p>Start using prompts to see your most used ones here.</p>
+            </div>
+        `
+    return
+  }
+
+  container.innerHTML = mostUsed
+    .map(
+      (prompt, index) => `
+        <div class="most-used-item" onclick="selectPrompt(${prompt.id})">
+            <div class="most-used-info">
+                <div class="rank-number">${index + 1}</div>
+                <div class="most-used-details">
+                    <div class="most-used-name">${prompt.name}</div>
+                    <div class="most-used-preview">${prompt.content.substring(0, 100)}...</div>
                 </div>
             </div>
-        `;
-    });
-    
-    container.innerHTML = html;
-    showModal('versionHistoryModal');
+            <div class="most-used-actions">
+                <span class="usage-count">${prompt.usage_count} uses</span>
+                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); copyPromptById(${prompt.id})">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+    `,
+    )
+    .join("")
 }
 
-async function restoreVersion(promptId, versionId) {
-    const result = await apiCall(`/api/prompts/${promptId}/restore/${versionId}`, {
-        method: 'POST'
-    });
-    
-    if (result) {
-        await loadData();
-        closeModal('versionHistoryModal');
-        showToast('Version restored successfully');
-        
-        // Update selected prompt
-        selectedPrompt = data.prompts.find(p => p.id === promptId);
-        showPromptDetails();
-    }
+// Switch tabs
+function switchTab(tabId) {
+  // Update tab triggers
+  document.querySelectorAll(".tab-trigger").forEach((trigger) => {
+    trigger.classList.remove("active")
+  })
+  document.querySelector(`[data-tab="${tabId}"]`).classList.add("active")
+
+  // Update tab content
+  document.querySelectorAll(".tab-content").forEach((content) => {
+    content.classList.remove("active")
+  })
+  document.getElementById(`${tabId}Tab`).classList.add("active")
 }
 
-// Drag and drop for prompts
-function handlePromptDragStart(event, promptId) {
-    draggedPrompt = promptId;
-    event.target.classList.add('dragging');
-    event.dataTransfer.effectAllowed = 'move';
+// Filter sidebar based on search
+function filterSidebar(query) {
+  const items = document.querySelectorAll(".prompt-item, .folder-item")
+
+  items.forEach((item) => {
+    const name = item.querySelector(".prompt-name, .folder-name").textContent.toLowerCase()
+    const matches = name.includes(query)
+    item.style.display = matches ? "flex" : "none"
+  })
 }
 
-function handleDragOver(event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    if (!event.currentTarget.classList.contains('drag-over')) {
-        event.currentTarget.classList.add('drag-over');
-    }
+// Toggle sidebar (mobile)
+function toggleSidebar() {
+  document.querySelector(".sidebar").classList.toggle("open")
 }
 
-function handleDragLeave(event) {
-    // Only remove drag-over if we're actually leaving the element
-    if (!event.currentTarget.contains(event.relatedTarget)) {
-        event.currentTarget.classList.remove('drag-over');
-    }
+// Copy prompt content
+function copyPrompt() {
+  if (!currentPrompt) return
+
+  navigator.clipboard
+    .writeText(currentPrompt.content)
+    .then(() => {
+      showToast("Prompt copied to clipboard")
+
+      // Increment usage count
+      fetch(`/api/prompts/${currentPrompt.id}/use`, { method: "POST" }).then(() => {
+        currentPrompt.usage_count++
+        renderPromptDetails()
+        renderMostUsed()
+      })
+    })
+    .catch(() => {
+      showToast("Failed to copy prompt")
+    })
 }
 
-async function handlePromptDrop(event, folderId = null) {
-    event.preventDefault();
-    event.currentTarget.classList.remove('drag-over');
-    
-    if (!draggedPrompt) return;
-    
-    const result = await apiCall(`/api/prompts/${draggedPrompt}/move`, {
-        method: 'POST',
-        body: JSON.stringify({ folderId })
-    });
-    
-    if (result) {
-        await loadData();
-        showToast('Prompt moved successfully');
-    }
-    
-    draggedPrompt = null;
+// Copy prompt by ID
+function copyPromptById(promptId) {
+  const prompt = prompts.find((p) => p.id === promptId)
+  if (!prompt) return
+
+  navigator.clipboard
+    .writeText(prompt.content)
+    .then(() => {
+      showToast("Prompt copied to clipboard")
+
+      // Increment usage count
+      fetch(`/api/prompts/${promptId}/use`, { method: "POST" }).then(() => {
+        prompt.usage_count++
+        renderMostUsed()
+        if (currentPrompt && currentPrompt.id === promptId) {
+          renderPromptDetails()
+        }
+      })
+    })
+    .catch(() => {
+      showToast("Failed to copy prompt")
+    })
 }
 
-// Drag and drop for folders (nesting)
-async function handleFolderDrop(event, targetFolderId) {
-    event.preventDefault();
-    event.currentTarget.classList.remove('drag-over');
-    
-    if (!draggedFolder || draggedFolder === targetFolderId) return;
-    
-    const result = await apiCall(`/api/folders/${draggedFolder}/move`, {
-        method: 'POST',
-        body: JSON.stringify({ parentId: targetFolderId })
-    });
-    
-    if (result) {
-        await loadData();
-        showToast('Folder moved successfully');
-    }
-    
-    draggedFolder = null;
-}
+// Show toast notification
+function showToast(message) {
+  const toast = document.getElementById("toast")
+  toast.textContent = message
+  toast.classList.add("show")
 
-function handleDragEnd(event) {
-    event.target.classList.remove('dragging');
-    // Clean up any remaining drag-over classes
-    document.querySelectorAll('.drag-over').forEach(el => {
-        el.classList.remove('drag-over');
-    });
-    draggedPrompt = null;
-    draggedFolder = null;
+  setTimeout(() => {
+    toast.classList.remove("show")
+  }, 3000)
 }
 
 // Modal functions
-function showModal(modalId) {
-    document.getElementById(modalId).classList.add('show');
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('show');
-}
-
 function showAddPromptModal() {
-    showModal('addPromptModal');
+  document.getElementById("addPromptModal").classList.add("show")
 }
 
 function showAddFolderModal() {
-    showModal('addFolderModal');
+  document.getElementById("addFolderModal").classList.add("show")
 }
 
-// Utility functions
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function showEditPromptModal(promptId) {
+  const prompt = prompts.find((p) => p.id === promptId)
+  if (!prompt) return
+
+  document.getElementById("editPromptName").value = prompt.name
+  document.getElementById("editPromptContent").value = prompt.content
+  document.getElementById("editPromptId").value = prompt.id
+  document.getElementById("editPromptModal").classList.add("show")
 }
 
-function showToast(message) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.classList.add('show');
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+function showEditFolderModal(folderId) {
+  const folder = folders.find((f) => f.id === folderId)
+  if (!folder) return
+
+  document.getElementById("editFolderName").value = folder.name
+  document.getElementById("editFolderId").value = folder.id
+  document.getElementById("editFolderModal").classList.add("show")
 }
 
-function toggleSidebar() {
-    document.querySelector('.sidebar').classList.toggle('open');
+function showVersionHistory(promptId) {
+  fetch(`/api/prompts/${promptId}/versions`)
+    .then((response) => response.json())
+    .then((versions) => {
+      const container = document.getElementById("versionsList")
+      container.innerHTML = versions
+        .map(
+          (version) => `
+                <div class="version-item">
+                    <div class="version-header">
+                        <div class="version-info-left">
+                            <span class="version-number">v${version.version}</span>
+                            ${version.is_current ? '<span class="current-badge">Current</span>' : ""}
+                        </div>
+                        <div class="version-info-right">
+                            <span class="version-timestamp">${new Date(version.created_at).toLocaleDateString()}</span>
+                            <button class="btn btn-outline btn-sm" onclick="revertToVersion(${promptId}, ${version.version})">
+                                Revert
+                            </button>
+                        </div>
+                    </div>
+                    <div class="version-details">
+                        <div class="version-field">
+                            <div class="version-field-label">Name:</div>
+                            <div class="version-field-content">${version.name}</div>
+                        </div>
+                        <div class="version-field">
+                            <div class="version-field-label">Content:</div>
+                            <div class="version-field-content">${version.content}</div>
+                        </div>
+                    </div>
+                </div>
+            `,
+        )
+        .join("")
+
+      document.getElementById("versionHistoryModal").classList.add("show")
+    })
+    .catch((error) => {
+      console.error("Error loading version history:", error)
+      showToast("Error loading version history")
+    })
 }
 
-// Initialize empty state
-showEmptyState();
+function closeModals() {
+  document.querySelectorAll(".modal").forEach((modal) => {
+    modal.classList.remove("show")
+  })
+}
+
+// Form handlers
+function handlePromptSubmit(e) {
+  e.preventDefault()
+
+  const formData = new FormData(e.target)
+  const data = {
+    name: formData.get("name"),
+    content: formData.get("content"),
+  }
+
+  fetch("/api/prompts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        closeModals()
+        loadData()
+        showToast("Prompt added successfully")
+        e.target.reset()
+      } else {
+        showToast("Error adding prompt")
+      }
+    })
+    .catch((error) => {
+      console.error("Error adding prompt:", error)
+      showToast("Error adding prompt")
+    })
+}
+
+function handleFolderSubmit(e) {
+  e.preventDefault()
+
+  const formData = new FormData(e.target)
+  const data = {
+    name: formData.get("name"),
+  }
+
+  fetch("/api/folders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        closeModals()
+        loadData()
+        showToast("Folder added successfully")
+        e.target.reset()
+      } else {
+        showToast("Error adding folder")
+      }
+    })
+    .catch((error) => {
+      console.error("Error adding folder:", error)
+      showToast("Error adding folder")
+    })
+}
+
+function handleEditPromptSubmit(e) {
+  e.preventDefault()
+
+  const formData = new FormData(e.target)
+  const promptId = formData.get("id")
+  const data = {
+    name: formData.get("name"),
+    content: formData.get("content"),
+  }
+
+  fetch(`/api/prompts/${promptId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        closeModals()
+        loadData()
+        showToast("Prompt updated successfully")
+      } else {
+        showToast("Error updating prompt")
+      }
+    })
+    .catch((error) => {
+      console.error("Error updating prompt:", error)
+      showToast("Error updating prompt")
+    })
+}
+
+function handleEditFolderSubmit(e) {
+  e.preventDefault()
+
+  const formData = new FormData(e.target)
+  const folderId = formData.get("id")
+  const data = {
+    name: formData.get("name"),
+  }
+
+  fetch(`/api/folders/${folderId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        closeModals()
+        loadData()
+        showToast("Folder updated successfully")
+      } else {
+        showToast("Error updating folder")
+      }
+    })
+    .catch((error) => {
+      console.error("Error updating folder:", error)
+      showToast("Error updating folder")
+    })
+}
+
+// Delete functions
+function deletePrompt(promptId) {
+  if (!confirm("Are you sure you want to delete this prompt?")) return
+
+  fetch(`/api/prompts/${promptId}`, { method: "DELETE" })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        loadData()
+        showToast("Prompt deleted successfully")
+
+        // Clear current prompt if it was deleted
+        if (currentPrompt && currentPrompt.id === promptId) {
+          currentPrompt = null
+          switchTab("mostUsed")
+        }
+      } else {
+        showToast("Error deleting prompt")
+      }
+    })
+    .catch((error) => {
+      console.error("Error deleting prompt:", error)
+      showToast("Error deleting prompt")
+    })
+}
+
+function deleteFolder(folderId) {
+  if (
+    !confirm("Are you sure you want to delete this folder? All prompts in this folder will be moved to the root level.")
+  )
+    return
+
+  fetch(`/api/folders/${folderId}`, { method: "DELETE" })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        loadData()
+        showToast("Folder deleted successfully")
+
+        // Clear current folder if it was deleted
+        if (currentFolder && currentFolder.id === folderId) {
+          currentFolder = null
+          switchTab("mostUsed")
+        }
+      } else {
+        showToast("Error deleting folder")
+      }
+    })
+    .catch((error) => {
+      console.error("Error deleting folder:", error)
+      showToast("Error deleting folder")
+    })
+}
+
+function revertToVersion(promptId, version) {
+  if (!confirm(`Are you sure you want to revert to version ${version}?`)) return
+
+  fetch(`/api/prompts/${promptId}/revert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ version }),
+  })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        closeModals()
+        loadData()
+        showToast(`Reverted to version ${version}`)
+      } else {
+        showToast("Error reverting version")
+      }
+    })
+    .catch((error) => {
+      console.error("Error reverting version:", error)
+      showToast("Error reverting version")
+    })
+}
