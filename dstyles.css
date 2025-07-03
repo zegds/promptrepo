@@ -184,13 +184,27 @@ body {
   color: #dc2626;
 }
 
-/* Folder Controls for up/down arrows */
+/* Folder count badge - positioned between name and controls */
+.folder-count {
+  font-size: 11px;
+  color: #64748b;
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  margin-right: 8px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Folder Controls positioned between count and delete button */
 .folder-controls {
   display: flex;
   flex-direction: column;
   opacity: 0;
   margin-right: 8px;
   transition: opacity 0.2s;
+  gap: 1px;
 }
 
 .folder-item:hover .folder-controls {
@@ -207,7 +221,11 @@ body {
   font-size: 10px;
   line-height: 1;
   transition: all 0.2s;
-  margin: 1px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 14px;
 }
 
 .folder-move-btn:hover:not(.disabled) {
@@ -218,6 +236,18 @@ body {
 .folder-move-btn.disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* Special styling for the "move out" button */
+.folder-move-btn i.fa-arrow-left {
+  font-size: 8px;
+}
+
+/* Folder prompts container for nested prompts */
+.folder-prompts-container {
+  margin-left: 20px;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 8px;
 }
 
 /* Folder item layout adjustments */
