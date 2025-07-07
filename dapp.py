@@ -18,7 +18,7 @@ def load_data():
             with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
                 # Ensure all prompts have required fields
-                for prompt in data.get('prompts', []):
+                for i, prompt in enumerate(data.get('prompts', [])):
                     if 'versions' not in prompt:
                         prompt['versions'] = [{
                             'id': f"{int(time.time())}-v1",
@@ -30,6 +30,8 @@ def load_data():
                         prompt['currentVersion'] = 1
                     if 'usageCount' not in prompt:
                         prompt['usageCount'] = 0
+                    if 'order' not in prompt:
+                        prompt['order'] = i
                 
                 # Ensure all folders have order field and parentId
                 for i, folder in enumerate(data.get('folders', [])):
@@ -38,10 +40,11 @@ def load_data():
                     if 'parentId' not in folder:
                         folder['parentId'] = None
                     if 'expanded' not in folder:
-                        folder['expanded'] = True
+                        folder['expanded'] = False  # Default to closed
                 
-                # Sort folders by order
+                # Sort folders and prompts by order
                 data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
+                data['prompts'] = sorted(data.get('prompts', []), key=lambda x: x.get('order', 0))
                 
                 return data
         except json.JSONDecodeError:
@@ -53,44 +56,14 @@ def save_data(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
-def get_folder_hierarchy():
-    """Get folders organized in hierarchy"""
-    data = load_data()
-    folders = data['folders']
-    
-    # Create a map for quick lookup
-    folder_map = {f['id']: f for f in folders}
-    
-    # Add children array to each folder
-    for folder in folders:
-        folder['children'] = []
-    
-    # Build hierarchy
-    root_folders = []
-    for folder in folders:
-        if folder['parentId'] and folder['parentId'] in folder_map:
-            folder_map[folder['parentId']]['children'].append(folder)
-        else:
-            root_folders.append(folder)
-    
-    return root_folders
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
-# API Routes
 
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """Get all prompts and folders"""
     return jsonify(load_data())
-
-@app.route('/api/prompts', methods=['GET'])
-def get_prompts():
-    """Get all prompts"""
-    data = load_data()
-    return jsonify(data.get('prompts', []))
 
 @app.route('/api/prompts', methods=['POST'])
 def add_prompt():
@@ -98,12 +71,18 @@ def add_prompt():
     data = load_data()
     prompt_data = request.json
     
+    # Get the highest order number for prompts in the same folder
+    folder_id = prompt_data.get('folderId')
+    siblings = [p for p in data['prompts'] if p.get('folderId') == folder_id]
+    max_order = max([p.get('order', 0) for p in siblings], default=-1)
+    
     now = int(time.time() * 1000)
     new_prompt = {
         'id': str(now),
         'name': prompt_data['name'],
         'text': prompt_data['text'],
-        'folderId': prompt_data.get('folderId'),
+        'folderId': folder_id,
+        'order': max_order + 1,
         'versions': [{
             'id': f"{now}-v1",
             'name': prompt_data['name'],
@@ -117,7 +96,7 @@ def add_prompt():
     
     data['prompts'].append(new_prompt)
     save_data(data)
-    return jsonify({'success': True, 'id': new_prompt['id']})
+    return jsonify(new_prompt)
 
 @app.route('/api/prompts/<prompt_id>', methods=['PUT'])
 def update_prompt(prompt_id):
@@ -173,39 +152,6 @@ def copy_prompt(prompt_id):
     save_data(data)
     return jsonify({'success': True})
 
-@app.route('/api/prompts/<prompt_id>/use', methods=['POST'])
-def use_prompt(prompt_id):
-    """Track prompt usage (alias for copy)"""
-    return copy_prompt(prompt_id)
-
-@app.route('/api/prompts/<prompt_id>/versions', methods=['GET'])
-def get_prompt_versions(prompt_id):
-    """Get all versions of a prompt"""
-    data = load_data()
-    
-    for prompt in data['prompts']:
-        if prompt['id'] == prompt_id:
-            versions = prompt.get('versions', [])
-            current_version = prompt.get('currentVersion', 1)
-            
-            # Mark current version and format for frontend
-            formatted_versions = []
-            for version in versions:
-                formatted_version = {
-                    'version': version['version'],
-                    'name': version['name'],
-                    'content': version['text'],  # Map 'text' to 'content' for frontend
-                    'created_at': version['timestamp'],
-                    'is_current': version['version'] == current_version
-                }
-                formatted_versions.append(formatted_version)
-            
-            # Sort by version descending
-            formatted_versions.sort(key=lambda x: x['version'], reverse=True)
-            return jsonify(formatted_versions)
-    
-    return jsonify([])
-
 @app.route('/api/prompts/<prompt_id>/restore/<version_id>', methods=['POST'])
 def restore_version(prompt_id, version_id):
     """Restore a prompt to a previous version"""
@@ -223,94 +169,28 @@ def restore_version(prompt_id, version_id):
     save_data(data)
     return jsonify({'success': True})
 
-@app.route('/api/prompts/<prompt_id>/revert', methods=['POST'])
-def revert_prompt_version(prompt_id):
-    """Revert to a specific version and create a new version entry"""
-    data = load_data()
-    target_version = request.json.get('version')
-    
-    if not target_version:
-        return jsonify({'success': False, 'error': 'Version number is required'})
-    
-    for prompt in data['prompts']:
-        if prompt['id'] == prompt_id:
-            # Find the target version
-            target_version_data = None
-            for version in prompt['versions']:
-                if version['version'] == target_version:
-                    target_version_data = version
-                    break
-            
-            if not target_version_data:
-                return jsonify({'success': False, 'error': 'Version not found'})
-            
-            # Create a new version based on the target
-            new_version = prompt['currentVersion'] + 1
-            now = int(time.time() * 1000)
-            
-            new_version_entry = {
-                'id': f"{now}-v{new_version}",
-                'name': target_version_data['name'],
-                'text': target_version_data['text'],
-                'timestamp': now,
-                'version': new_version
-            }
-            
-            # Update prompt
-            prompt['name'] = target_version_data['name']
-            prompt['text'] = target_version_data['text']
-            prompt['versions'].append(new_version_entry)
-            prompt['currentVersion'] = new_version
-            
-            save_data(data)
-            return jsonify({'success': True})
-    
-    return jsonify({'success': False, 'error': 'Prompt not found'})
-
-# Folder API Routes
-
-@app.route('/api/folders', methods=['GET'])
-def get_folders():
-    """Get all folders"""
-    data = load_data()
-    return jsonify(data.get('folders', []))
-
 @app.route('/api/folders', methods=['POST'])
 def add_folder():
     """Add a new folder"""
     data = load_data()
     folder_data = request.json
     
-    # Get the highest order number for folders at the same level
+    # Get the highest order number for the same parent level
     parent_id = folder_data.get('parentId')
-    same_level_folders = [f for f in data['folders'] if f.get('parentId') == parent_id]
-    max_order = max([f.get('order', 0) for f in same_level_folders], default=-1)
+    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id]
+    max_order = max([f.get('order', 0) for f in siblings], default=-1)
     
     new_folder = {
         'id': str(int(time.time() * 1000)),
         'name': folder_data['name'],
-        'expanded': True,
+        'expanded': False,  # Default to closed
         'order': max_order + 1,
         'parentId': parent_id
     }
     
     data['folders'].append(new_folder)
     save_data(data)
-    return jsonify({'success': True, 'id': new_folder['id']})
-
-@app.route('/api/folders/<folder_id>', methods=['PUT'])
-def update_folder(folder_id):
-    """Update folder name"""
-    data = load_data()
-    updates = request.json
-    
-    for folder in data['folders']:
-        if folder['id'] == folder_id:
-            folder['name'] = updates.get('name', folder['name'])
-            break
-    
-    save_data(data)
-    return jsonify({'success': True})
+    return jsonify(new_folder)
 
 @app.route('/api/folders/<folder_id>', methods=['DELETE'])
 def delete_folder(folder_id):
@@ -345,73 +225,9 @@ def delete_folder(folder_id):
     save_data(data)
     return jsonify({'success': True})
 
-@app.route('/api/folders/<folder_id>/move-up', methods=['POST'])
-def move_folder_up(folder_id):
-    """Move folder up in order"""
-    data = load_data()
-    
-    # Find the folder
-    folder = None
-    for f in data['folders']:
-        if f['id'] == folder_id:
-            folder = f
-            break
-    
-    if not folder:
-        return jsonify({'error': 'Folder not found'}), 404
-    
-    # Get siblings (folders with same parent)
-    siblings = [f for f in data['folders'] if f.get('parentId') == folder.get('parentId')]
-    siblings.sort(key=lambda x: x.get('order', 0))
-    
-    # Find current position
-    current_index = next((i for i, f in enumerate(siblings) if f['id'] == folder_id), -1)
-    
-    if current_index > 0:
-        # Swap orders with previous sibling
-        prev_folder = siblings[current_index - 1]
-        folder['order'], prev_folder['order'] = prev_folder['order'], folder['order']
-        
-        save_data(data)
-        return jsonify({'success': True})
-    
-    return jsonify({'error': 'Cannot move up'}), 400
-
-@app.route('/api/folders/<folder_id>/move-down', methods=['POST'])
-def move_folder_down(folder_id):
-    """Move folder down in order"""
-    data = load_data()
-    
-    # Find the folder
-    folder = None
-    for f in data['folders']:
-        if f['id'] == folder_id:
-            folder = f
-            break
-    
-    if not folder:
-        return jsonify({'error': 'Folder not found'}), 404
-    
-    # Get siblings (folders with same parent)
-    siblings = [f for f in data['folders'] if f.get('parentId') == folder.get('parentId')]
-    siblings.sort(key=lambda x: x.get('order', 0))
-    
-    # Find current position
-    current_index = next((i for i, f in enumerate(siblings) if f['id'] == folder_id), -1)
-    
-    if current_index < len(siblings) - 1:
-        # Swap orders with next sibling
-        next_folder = siblings[current_index + 1]
-        folder['order'], next_folder['order'] = next_folder['order'], folder['order']
-        
-        save_data(data)
-        return jsonify({'success': True})
-    
-    return jsonify({'error': 'Cannot move down'}), 400
-
 @app.route('/api/folders/<folder_id>/move', methods=['POST'])
 def move_folder(folder_id):
-    """Move folder to different parent"""
+    """Move folder to different parent (for nesting)"""
     data = load_data()
     new_parent_id = request.json.get('parentId')
     
@@ -451,54 +267,6 @@ def move_folder(folder_id):
     save_data(data)
     return jsonify({'success': True})
 
-@app.route('/api/folders/move', methods=['POST'])
-def move_folder_api():
-    """Move folder to different parent (drag & drop endpoint)"""
-    data_request = request.get_json()
-    folder_id = data_request.get('folder_id')
-    parent_id = data_request.get('parent_id')
-    
-    if not folder_id:
-        return jsonify({'success': False, 'error': 'Folder ID is required'})
-    
-    data = load_data()
-    
-    # Find the folder
-    folder = None
-    for f in data['folders']:
-        if f['id'] == folder_id:
-            folder = f
-            break
-    
-    if not folder:
-        return jsonify({'success': False, 'error': 'Folder not found'})
-    
-    # Check for circular reference
-    def would_create_cycle(folder_id, target_parent_id):
-        if target_parent_id is None:
-            return False
-        if target_parent_id == folder_id:
-            return True
-        
-        for f in data['folders']:
-            if f['id'] == target_parent_id:
-                return would_create_cycle(folder_id, f.get('parentId'))
-        return False
-    
-    if would_create_cycle(folder_id, parent_id):
-        return jsonify({'success': False, 'error': 'Cannot create circular reference'})
-    
-    # Update parent
-    folder['parentId'] = parent_id
-    
-    # Update order to be last in new parent
-    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id and f['id'] != folder_id]
-    max_order = max([f.get('order', 0) for f in siblings], default=-1)
-    folder['order'] = max_order + 1
-    
-    save_data(data)
-    return jsonify({'success': True})
-
 @app.route('/api/prompts/<prompt_id>/move', methods=['POST'])
 def move_prompt(prompt_id):
     """Move prompt to folder"""
@@ -508,45 +276,53 @@ def move_prompt(prompt_id):
     for prompt in data['prompts']:
         if prompt['id'] == prompt_id:
             prompt['folderId'] = folder_id
+            # Update order to be last in new folder
+            siblings = [p for p in data['prompts'] if p.get('folderId') == folder_id and p['id'] != prompt_id]
+            max_order = max([p.get('order', 0) for p in siblings], default=-1)
+            prompt['order'] = max_order + 1
             break
     
     save_data(data)
     return jsonify({'success': True})
 
-@app.route('/api/prompts/move', methods=['POST'])
-def move_prompt_api():
-    """Move prompt to folder (drag & drop endpoint)"""
-    data_request = request.get_json()
-    prompt_id = data_request.get('prompt_id')
-    folder_id = data_request.get('folder_id')
-    
-    if not prompt_id:
-        return jsonify({'success': False, 'error': 'Prompt ID is required'})
-    
+@app.route('/api/prompts/reorder', methods=['POST'])
+def reorder_prompts():
+    """Reorder prompts within the same folder"""
     data = load_data()
+    reorder_data = request.json
     
-    for prompt in data['prompts']:
-        if prompt['id'] == prompt_id:
-            prompt['folderId'] = folder_id
-            break
+    prompt_orders = reorder_data.get('promptOrders', [])
+    
+    # Update prompt orders
+    for prompt_order in prompt_orders:
+        prompt_id = prompt_order['id']
+        new_order = prompt_order['order']
+        
+        for prompt in data['prompts']:
+            if prompt['id'] == prompt_id:
+                prompt['order'] = new_order
+                break
     
     save_data(data)
     return jsonify({'success': True})
 
 @app.route('/api/folders/reorder', methods=['POST'])
-def reorder_folder():
-    """Update folder order"""
+def reorder_folders():
+    """Reorder folders within the same parent"""
     data = load_data()
-    folder_id = request.json.get('folder_id')
-    new_order = request.json.get('new_order')
+    reorder_data = request.json
     
-    if not folder_id or new_order is None:
-        return jsonify({'success': False, 'error': 'Folder ID and new order are required'})
+    folder_orders = reorder_data.get('folderOrders', [])
     
-    for folder in data['folders']:
-        if folder['id'] == folder_id:
-            folder['order'] = new_order
-            break
+    # Update folder orders
+    for folder_order in folder_orders:
+        folder_id = folder_order['id']
+        new_order = folder_order['order']
+        
+        for folder in data['folders']:
+            if folder['id'] == folder_id:
+                folder['order'] = new_order
+                break
     
     save_data(data)
     return jsonify({'success': True})
