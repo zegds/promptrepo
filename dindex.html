@@ -1368,8 +1368,8 @@ function renderContainer(parentId, filteredPrompts, level = 0) {
     let html = '';
     
     // Get folders and prompts for this container
-    const folders = data.folders.filter(f => f.parentId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
-    const prompts = filteredPrompts.filter(p => p.folderId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const folders = data.folders.filter(f => f.parentId === parentId);
+    const prompts = filteredPrompts.filter(p => p.folderId === parentId);
     
     // Create combined list of items with their types and orders
     const allItems = [
@@ -1775,6 +1775,55 @@ async function handleDirectFolderDrop(folderId) {
     if (result && result.success) {
         await loadData();
         showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to folder`);
+    } else {
+        showToast('Failed to move item');
+    }
+}
+
+// Handle position-based drops
+async function handlePositionDrop(dropZone) {
+    const parentId = dropZone.dataset.parentId || null;
+    const position = parseInt(dropZone.dataset.position);
+    
+    console.log(`Position drop: ${draggedType} ${draggedItem} to container ${parentId} at position ${position}`);
+    
+    const result = await apiCall('/api/items/move', {
+        method: 'POST',
+        body: JSON.stringify({
+            type: draggedType,
+            itemId: draggedItem,
+            targetContainer: parentId,
+            targetPosition: position
+        })
+    });
+    
+    if (result && result.success) {
+        await loadData();
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
+    } else {
+        showToast('Failed to move item');
+    }
+}
+
+// Handle folder nesting drops
+async function handleFolderDrop(dropZone) {
+    const parentId = dropZone.dataset.parentId || null;
+    
+    console.log(`Folder drop: ${draggedType} ${draggedItem} to folder ${parentId}`);
+    
+    const result = await apiCall('/api/items/move', {
+        method: 'POST',
+        body: JSON.stringify({
+            type: draggedType,
+            itemId: draggedItem,
+            targetContainer: parentId,
+            targetPosition: null // null means end of container
+        })
+    });
+    
+    if (result && result.success) {
+        await loadData();
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root'}`);
     } else {
         showToast('Failed to move item');
     }
