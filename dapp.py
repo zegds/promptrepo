@@ -39,8 +39,9 @@ def load_data():
                         folder['order'] = i
                     if 'parentId' not in folder:
                         folder['parentId'] = None
+                    # Don't override existing expanded state, but default to False
                     if 'expanded' not in folder:
-                        folder['expanded'] = False  # Always default to closed
+                        folder['expanded'] = False
                         
                 # Sort folders and prompts by order
                 data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
