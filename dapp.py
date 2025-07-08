@@ -11,6 +11,76 @@ DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
 DATA_FILE = DOCUMENTS_DIR / 'config.json'
 COOLDOWN_MINUTES = 3
 
+def create_seed_data():
+    """Create initial seed data with example folder and prompts"""
+    now = int(time.time() * 1000)
+    
+    # Create example folder
+    example_folder = {
+        'id': str(now),
+        'name': 'Example Prompts',
+        'expanded': False,
+        'order': 0,
+        'parentId': None
+    }
+    
+    # Create example prompts
+    prompts = [
+        {
+            'id': str(now + 1),
+            'name': 'Creative Writing Assistant',
+            'text': 'You are a creative writing assistant. Help me brainstorm ideas, develop characters, and improve my storytelling. Please ask clarifying questions to better understand what kind of story I want to write.',
+            'folderId': example_folder['id'],
+            'order': 0,
+            'versions': [{
+                'id': f"{now + 1}-v1",
+                'name': 'Creative Writing Assistant',
+                'text': 'You are a creative writing assistant. Help me brainstorm ideas, develop characters, and improve my storytelling. Please ask clarifying questions to better understand what kind of story I want to write.',
+                'timestamp': now + 1,
+                'version': 1
+            }],
+            'currentVersion': 1,
+            'usageCount': 0
+        },
+        {
+            'id': str(now + 2),
+            'name': 'Code Review Helper',
+            'text': 'Please review the following code and provide feedback on:\n1. Code quality and best practices\n2. Potential bugs or issues\n3. Performance improvements\n4. Readability and maintainability\n\nCode to review:\n[PASTE CODE HERE]',
+            'folderId': example_folder['id'],
+            'order': 1,
+            'versions': [{
+                'id': f"{now + 2}-v1",
+                'name': 'Code Review Helper',
+                'text': 'Please review the following code and provide feedback on:\n1. Code quality and best practices\n2. Potential bugs or issues\n3. Performance improvements\n4. Readability and maintainability\n\nCode to review:\n[PASTE CODE HERE]',
+                'timestamp': now + 2,
+                'version': 1
+            }],
+            'currentVersion': 1,
+            'usageCount': 0
+        },
+        {
+            'id': str(now + 3),
+            'name': 'Meeting Summary Generator',
+            'text': 'Please create a concise meeting summary from the following notes. Include:\n- Key decisions made\n- Action items with owners\n- Important discussion points\n- Next steps\n\nMeeting notes:\n[PASTE NOTES HERE]',
+            'folderId': example_folder['id'],
+            'order': 2,
+            'versions': [{
+                'id': f"{now + 3}-v1",
+                'name': 'Meeting Summary Generator',
+                'text': 'Please create a concise meeting summary from the following notes. Include:\n- Key decisions made\n- Action items with owners\n- Important discussion points\n- Next steps\n\nMeeting notes:\n[PASTE NOTES HERE]',
+                'timestamp': now + 3,
+                'version': 1
+            }],
+            'currentVersion': 1,
+            'usageCount': 0
+        }
+    ]
+    
+    return {
+        'prompts': prompts,
+        'folders': [example_folder]
+    }
+
 def load_data():
     """Load data from config.json"""
     if os.path.exists(DATA_FILE):
@@ -46,7 +116,12 @@ def load_data():
                 return data
         except json.JSONDecodeError:
             pass
-    return {'prompts': [], 'folders': []}
+    
+    # If file doesn't exist or is corrupted, create seed data
+    print("Creating new config.json with seed data...")
+    seed_data = create_seed_data()
+    save_data(seed_data)
+    return seed_data
 
 def save_data(data):
     """Save data to config.json"""
