@@ -40,7 +40,7 @@ def load_data():
                     if 'parentId' not in folder:
                         folder['parentId'] = None
                     if 'expanded' not in folder:
-                        folder['expanded'] = False  # Default to closed
+                        folder['expanded'] = False  # Always default to closed
                 
                 # Sort folders and prompts by order
                 data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
@@ -55,6 +55,29 @@ def save_data(data):
     """Save data to config.json"""
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
+
+def reorder_items_in_container(items, moved_item_id, new_position):
+    """Reorder items within a container, maintaining proper order values"""
+    # Remove the moved item
+    moved_item = None
+    filtered_items = []
+    for item in items:
+        if item['id'] == moved_item_id:
+            moved_item = item
+        else:
+            filtered_items.append(item)
+    
+    if not moved_item:
+        return items
+    
+    # Insert at new position
+    filtered_items.insert(new_position, moved_item)
+    
+    # Update order values
+    for i, item in enumerate(filtered_items):
+        item['order'] = i
+    
+    return filtered_items
 
 @app.route('/')
 def index():
@@ -183,7 +206,7 @@ def add_folder():
     new_folder = {
         'id': str(int(time.time() * 1000)),
         'name': folder_data['name'],
-        'expanded': False,  # Default to closed
+        'expanded': False,  # Always default to closed
         'order': max_order + 1,
         'parentId': parent_id
     }
@@ -225,108 +248,88 @@ def delete_folder(folder_id):
     save_data(data)
     return jsonify({'success': True})
 
-@app.route('/api/folders/<folder_id>/move', methods=['POST'])
-def move_folder(folder_id):
-    """Move folder to different parent (for nesting)"""
+@app.route('/api/items/move', methods=['POST'])
+def move_item():
+    """Move an item (prompt or folder) to a new position"""
     data = load_data()
-    new_parent_id = request.json.get('parentId')
+    move_data = request.json
     
-    # Find the folder
-    folder = None
-    for f in data['folders']:
-        if f['id'] == folder_id:
-            folder = f
-            break
+    item_type = move_data.get('type')  # 'prompt' or 'folder'
+    item_id = move_data.get('itemId')
+    target_container = move_data.get('targetContainer')  # folder ID or null for root
+    target_position = move_data.get('targetPosition')  # index in the target container
     
-    if not folder:
-        return jsonify({'error': 'Folder not found'}), 404
-    
-    # Check for circular reference
-    def would_create_cycle(folder_id, target_parent_id):
-        if target_parent_id is None:
-            return False
-        if target_parent_id == folder_id:
-            return True
+    if item_type == 'prompt':
+        # Find the prompt
+        prompt = None
+        for p in data['prompts']:
+            if p['id'] == item_id:
+                prompt = p
+                break
         
+        if not prompt:
+            return jsonify({'error': 'Prompt not found'}), 404
+        
+        # Update folder
+        prompt['folderId'] = target_container
+        
+        # Reorder prompts in the target container
+        container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
+        reordered_prompts = reorder_items_in_container(container_prompts, item_id, target_position)
+        
+        # Update the main prompts list
+        for i, p in enumerate(data['prompts']):
+            if p.get('folderId') == target_container:
+                for reordered in reordered_prompts:
+                    if p['id'] == reordered['id']:
+                        data['prompts'][i] = reordered
+                        break
+    
+    elif item_type == 'folder':
+        # Find the folder
+        folder = None
         for f in data['folders']:
-            if f['id'] == target_parent_id:
-                return would_create_cycle(folder_id, f.get('parentId'))
-        return False
-    
-    if would_create_cycle(folder_id, new_parent_id):
-        return jsonify({'error': 'Cannot create circular reference'}), 400
-    
-    # Update parent
-    folder['parentId'] = new_parent_id
-    
-    # Update order to be last in new parent
-    siblings = [f for f in data['folders'] if f.get('parentId') == new_parent_id and f['id'] != folder_id]
-    max_order = max([f.get('order', 0) for f in siblings], default=-1)
-    folder['order'] = max_order + 1
-    
-    save_data(data)
-    return jsonify({'success': True})
-
-@app.route('/api/prompts/<prompt_id>/move', methods=['POST'])
-def move_prompt(prompt_id):
-    """Move prompt to folder"""
-    data = load_data()
-    folder_id = request.json.get('folderId')
-    
-    for prompt in data['prompts']:
-        if prompt['id'] == prompt_id:
-            prompt['folderId'] = folder_id
-            # Update order to be last in new folder
-            siblings = [p for p in data['prompts'] if p.get('folderId') == folder_id and p['id'] != prompt_id]
-            max_order = max([p.get('order', 0) for p in siblings], default=-1)
-            prompt['order'] = max_order + 1
-            break
-    
-    save_data(data)
-    return jsonify({'success': True})
-
-@app.route('/api/prompts/reorder', methods=['POST'])
-def reorder_prompts():
-    """Reorder prompts within the same folder"""
-    data = load_data()
-    reorder_data = request.json
-    
-    prompt_orders = reorder_data.get('promptOrders', [])
-    
-    # Update prompt orders
-    for prompt_order in prompt_orders:
-        prompt_id = prompt_order['id']
-        new_order = prompt_order['order']
-        
-        for prompt in data['prompts']:
-            if prompt['id'] == prompt_id:
-                prompt['order'] = new_order
+            if f['id'] == item_id:
+                folder = f
                 break
-    
-    save_data(data)
-    return jsonify({'success': True})
-
-@app.route('/api/folders/reorder', methods=['POST'])
-def reorder_folders():
-    """Reorder folders within the same parent"""
-    data = load_data()
-    reorder_data = request.json
-    
-    folder_orders = reorder_data.get('folderOrders', [])
-    
-    # Update folder orders
-    for folder_order in folder_orders:
-        folder_id = folder_order['id']
-        new_order = folder_order['order']
         
-        for folder in data['folders']:
-            if folder['id'] == folder_id:
-                folder['order'] = new_order
-                break
+        if not folder:
+            return jsonify({'error': 'Folder not found'}), 404
+        
+        # Check for circular reference
+        def would_create_cycle(folder_id, target_parent_id):
+            if target_parent_id is None:
+                return False
+            if target_parent_id == folder_id:
+                return True
+            
+            for f in data['folders']:
+                if f['id'] == target_parent_id:
+                    return would_create_cycle(folder_id, f.get('parentId'))
+            return False
+        
+        if would_create_cycle(item_id, target_container):
+            return jsonify({'error': 'Cannot create circular reference'}), 400
+        
+        # Update parent
+        folder['parentId'] = target_container
+        
+        # Reorder folders in the target container
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+        reordered_folders = reorder_items_in_container(container_folders, item_id, target_position)
+        
+        # Update the main folders list
+        for i, f in enumerate(data['folders']):
+            if f.get('parentId') == target_container:
+                for reordered in reordered_folders:
+                    if f['id'] == reordered['id']:
+                        data['folders'][i] = reordered
+                        break
     
     save_data(data)
     return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
