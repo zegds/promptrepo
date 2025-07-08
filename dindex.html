@@ -127,7 +127,7 @@ body {
   border-radius: 6px;
   cursor: pointer;
   margin-bottom: 2px;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   position: relative;
 }
 
@@ -200,7 +200,7 @@ body {
   border-radius: 6px;
   cursor: pointer;
   margin-bottom: 2px;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   position: relative;
   user-select: none;
 }
@@ -217,6 +217,7 @@ body {
   background-color: #dbeafe !important;
   border: 2px dashed #3b82f6 !important;
   border-radius: 6px;
+  transform: scale(1.02);
 }
 
 /* Drag handle for folders and prompts */
@@ -267,48 +268,84 @@ body {
   transition: background-color 0.2s;
 }
 
-/* Enhanced drop zones for better positioning */
+/* Enhanced drop zones for professional UX */
 .drop-zone {
-  height: 4px;
+  height: 2px;
   margin: 1px 0;
-  border-radius: 2px;
-  transition: all 0.3s ease;
+  border-radius: 1px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
   position: relative;
+  background-color: transparent;
 }
 
 .drop-zone.drag-over {
   background-color: #3b82f6;
   opacity: 1;
-  height: 24px;
-  margin: 8px 0;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  height: 32px;
+  margin: 12px 0;
+  box-shadow: 
+    0 0 0 1px rgba(59, 130, 246, 0.3),
+    0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: scaleY(1);
 }
 
 .drop-zone.drag-over::before {
   content: '';
   position: absolute;
   top: 50%;
-  left: 0;
-  right: 0;
+  left: 8px;
+  right: 8px;
   height: 2px;
   background-color: #3b82f6;
   transform: translateY(-50%);
+  border-radius: 1px;
 }
 
-/* Folder drop zone styling */
+.drop-zone.drag-over::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+/* Folder drop zone styling with enhanced UX */
 .folder-drop-zone {
-  min-height: 20px;
+  min-height: 8px;
   border-radius: 6px;
-  transition: all 0.3s ease;
-  margin: 2px 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 4px 0;
+  opacity: 0;
 }
 
 .folder-drop-zone.drag-over {
-  background-color: #f0f9ff;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border: 2px dashed #0ea5e9;
-  min-height: 40px;
-  margin: 8px 0;
+  min-height: 48px;
+  margin: 12px 0;
+  opacity: 1;
+  box-shadow: 
+    0 0 0 1px rgba(14, 165, 233, 0.2),
+    0 4px 12px rgba(14, 165, 233, 0.1);
+  transform: scale(1.02);
+}
+
+.folder-drop-zone.drag-over::before {
+  content: 'Drop here to add to folder';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #0ea5e9;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Main Content Styles */
@@ -919,13 +956,28 @@ body {
   opacity: 1;
 }
 
-/* Enhanced drag states */
+/* Enhanced drag states with professional polish */
 .prompt-item.dragging,
 .folder-item.dragging {
-  opacity: 0.6;
-  transform: rotate(1deg) scale(1.02);
+  opacity: 0.7;
+  transform: rotate(1deg) scale(1.05);
   z-index: 1000;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(59, 130, 246, 0.2);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+/* Drag feedback improvements */
+.dragging-active .drop-zone {
+  opacity: 0.3;
+  height: 4px;
+}
+
+.dragging-active .folder-drop-zone {
+  opacity: 0.3;
+  min-height: 16px;
 }
 
 /* Utility Classes */
@@ -987,13 +1039,14 @@ body {
     font-size: 12px;
   }
 
-  .folder-controls {
-    margin-right: 4px;
+  .drop-zone.drag-over {
+    height: 24px;
+    margin: 8px 0;
   }
 
-  .folder-move-btn {
-    padding: 1px 3px;
-    font-size: 9px;
+  .folder-drop-zone.drag-over {
+    min-height: 36px;
+    margin: 8px 0;
   }
 }
     </style>
@@ -1232,6 +1285,8 @@ let activeTab = 'repository';
 let draggedItem = null;
 let draggedType = null; // 'prompt' or 'folder'
 let deleteTarget = null;
+let dragStartY = 0;
+let lastValidDropZone = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -1284,6 +1339,9 @@ function setupEventListeners() {
             }
         }
     });
+
+    // Global drag tracking for intelligent positioning
+    document.addEventListener('dragover', handleGlobalDragOver);
 }
 
 // Search functionality
@@ -1402,10 +1460,8 @@ function renderContainer(parentId, filteredPrompts, level = 0) {
         html += renderDropZone(parentId, index + 1);
     });
     
-    // Add folder drop zone if there are folders at this level
-    if (folders.length > 0 || level === 0) {
-        html += renderFolderDropZone(parentId);
-    }
+    // Add folder drop zone for adding items to this container
+    html += renderFolderDropZone(parentId);
     
     return html;
 }
@@ -1533,6 +1589,10 @@ function selectFolder(folderId) {
     selectedFolder = folderId;
     selectedPrompt = null;
     renderPromptList();
+    showFolder
+    selectedFolder = folderId;
+    selectedPrompt = null;
+    renderPromptList();
     showFolderDetails();
 }
 
@@ -1650,19 +1710,24 @@ function switchTab(tabName) {
     }
 }
 
-// Enhanced drag and drop functionality
+// Enhanced drag and drop functionality with intelligent positioning
 function handleDragStart(event) {
     const element = event.currentTarget;
     draggedItem = element.dataset.itemId;
     draggedType = element.dataset.itemType;
+    dragStartY = event.clientY;
+    lastValidDropZone = null;
     
     element.classList.add('dragging');
+    document.body.classList.add('dragging-active');
+    
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', `${draggedType}:${draggedItem}`);
 }
 
 function handleDragEnd(event) {
     event.currentTarget.classList.remove('dragging');
+    document.body.classList.remove('dragging-active');
     
     // Clean up all drag states
     document.querySelectorAll('.drag-over, .drag-over-folder').forEach(el => {
@@ -1671,6 +1736,20 @@ function handleDragEnd(event) {
     
     draggedItem = null;
     draggedType = null;
+    dragStartY = 0;
+    lastValidDropZone = null;
+}
+
+function handleGlobalDragOver(event) {
+    if (!draggedItem) return;
+    
+    // Find the closest drop zone or folder drop zone
+    const dropZone = event.target.closest('.drop-zone');
+    const folderDropZone = event.target.closest('.folder-drop-zone');
+    
+    if (dropZone || folderDropZone) {
+        lastValidDropZone = dropZone || folderDropZone;
+    }
 }
 
 function handleDragOver(event) {
@@ -1682,8 +1761,16 @@ function handleDragOver(event) {
     const dropZone = event.currentTarget;
     
     if (dropZone.classList.contains('drop-zone')) {
+        // Clear other drop zones
+        document.querySelectorAll('.drop-zone.drag-over').forEach(el => {
+            if (el !== dropZone) el.classList.remove('drag-over');
+        });
         dropZone.classList.add('drag-over');
     } else if (dropZone.classList.contains('folder-drop-zone')) {
+        // Clear other folder drop zones
+        document.querySelectorAll('.folder-drop-zone.drag-over').forEach(el => {
+            if (el !== dropZone) el.classList.remove('drag-over');
+        });
         dropZone.classList.add('drag-over');
     }
 }
@@ -1695,7 +1782,24 @@ function handleDragLeave(event) {
     }
 }
 
-// Handle drops for positioning between items
+// Intelligent position calculation
+function calculateIntelligentPosition(dropZone, currentY) {
+    const parentId = dropZone.dataset.parentId || null;
+    const basePosition = parseInt(dropZone.dataset.position);
+    
+    // Get all items in the container
+    const folders = data.folders.filter(f => f.parentId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const prompts = data.prompts.filter(p => p.folderId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const allItems = [...folders, ...prompts].sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // Clamp position to valid range
+    const maxPosition = allItems.length;
+    const clampedPosition = Math.max(0, Math.min(basePosition, maxPosition));
+    
+    return clampedPosition;
+}
+
+// Handle drops for positioning between items with intelligent clamping
 async function handlePositionDrop(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1704,7 +1808,7 @@ async function handlePositionDrop(event) {
     
     const dropZone = event.currentTarget;
     const parentId = dropZone.dataset.parentId || null;
-    const position = parseInt(dropZone.dataset.position);
+    const targetPosition = calculateIntelligentPosition(dropZone, event.clientY);
     
     dropZone.classList.remove('drag-over');
     
@@ -1714,7 +1818,7 @@ async function handlePositionDrop(event) {
             type: draggedType,
             itemId: draggedItem,
             targetContainer: parentId,
-            targetPosition: position
+            targetPosition: targetPosition
         })
     });
     
@@ -1724,7 +1828,7 @@ async function handlePositionDrop(event) {
     }
 }
 
-// Handle drops for moving into folders
+// Handle drops for moving into folders (always last position)
 async function handleFolderDrop(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1736,24 +1840,20 @@ async function handleFolderDrop(event) {
     
     dropZone.classList.remove('drag-over');
     
-    // For folder drops, we want to add to the end of the container
-    const siblings = draggedType === 'folder' 
-        ? data.folders.filter(f => f.parentId === parentId)
-        : data.prompts.filter(p => p.folderId === parentId);
-    
+    // Always place at the end when dropping into folder zone
     const result = await apiCall('/api/items/move', {
         method: 'POST',
         body: JSON.stringify({
             type: draggedType,
             itemId: draggedItem,
             targetContainer: parentId,
-            targetPosition: siblings.length
+            targetPosition: null // null means "put at end"
         })
     });
     
     if (result && result.success) {
         await loadData();
-        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root'}`);
     }
 }
 
