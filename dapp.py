@@ -43,10 +43,6 @@ def load_data():
                     if 'expanded' not in folder:
                         folder['expanded'] = False
                         
-                # Sort folders and prompts by order
-                data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
-                data['prompts'] = sorted(data.get('prompts', []), key=lambda x: x.get('order', 0))
-                        
                 return data
         except json.JSONDecodeError:
             pass
@@ -56,32 +52,6 @@ def save_data(data):
     """Save data to config.json"""
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
-
-def reorder_items_in_container(items, moved_item_id, new_position):
-    """Reorder items within a container, maintaining proper order values"""
-    # Remove the moved item
-    moved_item = None
-    filtered_items = []
-    for item in items:
-        if item['id'] == moved_item_id:
-            moved_item = item
-        else:
-            filtered_items.append(item)
-    
-    if not moved_item:
-        return items
-    
-    # Clamp position to valid range
-    new_position = max(0, min(new_position, len(filtered_items)))
-    
-    # Insert at new position
-    filtered_items.insert(new_position, moved_item)
-    
-    # Update order values
-    for i, item in enumerate(filtered_items):
-        item['order'] = i
-    
-    return filtered_items
 
 @app.route('/')
 def index():
@@ -98,10 +68,14 @@ def add_prompt():
     data = load_data()
     prompt_data = request.json
     
-    # Get the highest order number for prompts in the same folder
+    # Get the highest order number for items in the same container
     folder_id = prompt_data.get('folderId')
-    siblings = [p for p in data['prompts'] if p.get('folderId') == folder_id]
-    max_order = max([p.get('order', 0) for p in siblings], default=-1)
+    
+    # Get all items in the same container
+    container_folders = [f for f in data['folders'] if f.get('parentId') == folder_id]
+    container_prompts = [p for p in data['prompts'] if p.get('folderId') == folder_id]
+    all_items = container_folders + container_prompts
+    max_order = max([item.get('order', 0) for item in all_items], default=-1)
     
     now = int(time.time() * 1000)
     new_prompt = {
@@ -202,10 +176,14 @@ def add_folder():
     data = load_data()
     folder_data = request.json
     
-    # Get the highest order number for the same parent level
+    # Get the highest order number for items in the same container
     parent_id = folder_data.get('parentId')
-    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id]
-    max_order = max([f.get('order', 0) for f in siblings], default=-1)
+    
+    # Get all items in the same container
+    container_folders = [f for f in data['folders'] if f.get('parentId') == parent_id]
+    container_prompts = [p for p in data['prompts'] if p.get('folderId') == parent_id]
+    all_items = container_folders + container_prompts
+    max_order = max([item.get('order', 0) for item in all_items], default=-1)
     
     new_folder = {
         'id': str(int(time.time() * 1000)),
@@ -254,7 +232,7 @@ def delete_folder(folder_id):
 
 @app.route('/api/items/move', methods=['POST'])
 def move_item():
-    """Move an item (prompt or folder) to a new position with intelligent positioning"""
+    """Move an item (prompt or folder) to a new position"""
     try:
         data = load_data()
         move_data = request.json
@@ -266,97 +244,24 @@ def move_item():
         
         print(f"Moving {item_type} {item_id} to container {target_container} at position {target_position}")
         
+        # Find the item being moved
+        moved_item = None
         if item_type == 'prompt':
-            # Find the prompt
-            prompt = None
             for p in data['prompts']:
                 if p['id'] == item_id:
-                    prompt = p
+                    moved_item = p
                     break
-            
-            if not prompt:
-                return jsonify({'error': 'Prompt not found'}), 404
-            
-            # Update folder
-            old_folder = prompt.get('folderId')
-            prompt['folderId'] = target_container
-            
-            # Get all items in the target container (both folders and prompts)
-            container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
-            container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
-            
-            # Create combined list and sort by order
-            all_container_items = [
-                *[{**f, 'type': 'folder'} for f in container_folders],
-                *[{**p, 'type': 'prompt'} for p in container_prompts]
-            ]
-            all_container_items.sort(key=lambda x: x.get('order', 0))
-            
-            # Remove the moved item from the list
-            all_container_items = [item for item in all_container_items if item['id'] != item_id]
-            
-            # Insert at target position
-            if target_position is None:
-                target_position = len(all_container_items)
-            target_position = max(0, min(target_position, len(all_container_items)))
-            
-            # Insert the moved prompt
-            all_container_items.insert(target_position, {**prompt, 'type': 'prompt'})
-            
-            # Update order values for all items in the container
-            folder_order = 0
-            prompt_order = 0
-            
-            for i, item in enumerate(all_container_items):
-                item['order'] = i
-                
-                # Update the actual objects in data
-                if item['type'] == 'folder':
-                    for f in data['folders']:
-                        if f['id'] == item['id']:
-                            f['order'] = i
-                            break
-                else:  # prompt
-                    for p in data['prompts']:
-                        if p['id'] == item['id']:
-                            p['order'] = i
-                            break
-            
-            # Reorder items in the old container if it's different
-            if old_folder != target_container and old_folder is not None:
-                old_container_folders = [f for f in data['folders'] if f.get('parentId') == old_folder]
-                old_container_prompts = [p for p in data['prompts'] if p.get('folderId') == old_folder]
-                
-                old_all_items = [
-                    *[{**f, 'type': 'folder'} for f in old_container_folders],
-                    *[{**p, 'type': 'prompt'} for p in old_container_prompts]
-                ]
-                old_all_items.sort(key=lambda x: x.get('order', 0))
-                
-                for i, item in enumerate(old_all_items):
-                    if item['type'] == 'folder':
-                        for f in data['folders']:
-                            if f['id'] == item['id']:
-                                f['order'] = i
-                                break
-                    else:
-                        for p in data['prompts']:
-                            if p['id'] == item['id']:
-                                p['order'] = i
-                                break
-        
-        elif item_type == 'folder':
-            # Find the folder
-            folder = None
+        else:  # folder
             for f in data['folders']:
                 if f['id'] == item_id:
-                    folder = f
+                    moved_item = f
                     break
-            
-            if not folder:
-                return jsonify({'error': 'Folder not found'}), 404
-            
-            # Check for circular reference
+        
+        if not moved_item:
+            return jsonify({'error': f'{item_type.title()} not found'}), 404
+        
+        # For folders, check circular reference
+        if item_type == 'folder':
             def would_create_cycle(folder_id, target_parent_id):
                 if target_parent_id is None:
                     return False
@@ -370,71 +275,49 @@ def move_item():
             
             if would_create_cycle(item_id, target_container):
                 return jsonify({'error': 'Cannot create circular reference'}), 400
-            
-            # Update parent
-            old_parent = folder.get('parentId')
-            folder['parentId'] = target_container
-            
-            # Get all items in the target container (both folders and prompts)
-            container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
-            container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
-            
-            # Create combined list and sort by order
-            all_container_items = [
-                *[{**f, 'type': 'folder'} for f in container_folders],
-                *[{**p, 'type': 'prompt'} for p in container_prompts]
-            ]
-            all_container_items.sort(key=lambda x: x.get('order', 0))
-            
-            # Remove the moved item from the list
-            all_container_items = [item for item in all_container_items if item['id'] != item_id]
-            
-            # Insert at target position
-            if target_position is None:
-                target_position = len(all_container_items)
-            target_position = max(0, min(target_position, len(all_container_items)))
-            
-            # Insert the moved folder
-            all_container_items.insert(target_position, {**folder, 'type': 'folder'})
-            
-            # Update order values for all items in the container
-            for i, item in enumerate(all_container_items):
-                item['order'] = i
-                
-                # Update the actual objects in data
-                if item['type'] == 'folder':
-                    for f in data['folders']:
-                        if f['id'] == item['id']:
-                            f['order'] = i
-                            break
-                else:  # prompt
-                    for p in data['prompts']:
-                        if p['id'] == item['id']:
-                            p['order'] = i
-                            break
-            
-            # Reorder items in the old container if it's different
-            if old_parent != target_container:
-                old_container_folders = [f for f in data['folders'] if f.get('parentId') == old_parent]
-                old_container_prompts = [p for p in data['prompts'] if p.get('folderId') == old_parent]
-                
-                old_all_items = [
-                    *[{**f, 'type': 'folder'} for f in old_container_folders],
-                    *[{**p, 'type': 'prompt'} for f in old_container_prompts]
-                ]
-                old_all_items.sort(key=lambda x: x.get('order', 0))
-                
-                for i, item in enumerate(old_all_items):
-                    if item['type'] == 'folder':
-                        for f in data['folders']:
-                            if f['id'] == item['id']:
-                                f['order'] = i
-                                break
-                    else:
-                        for p in data['prompts']:
-                            if p['id'] == item['id']:
-                                p['order'] = i
-                                break
+        
+        # Update the item's container
+        if item_type == 'prompt':
+            moved_item['folderId'] = target_container
+        else:
+            moved_item['parentId'] = target_container
+        
+        # Get all items in the target container
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+        container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
+        
+        # Create a combined list of all items in the container
+        all_items = []
+        for f in container_folders:
+            all_items.append({'id': f['id'], 'type': 'folder', 'order': f.get('order', 0), 'item': f})
+        for p in container_prompts:
+            all_items.append({'id': p['id'], 'type': 'prompt', 'order': p.get('order', 0), 'item': p})
+        
+        # Sort by current order
+        all_items.sort(key=lambda x: x['order'])
+        
+        # Remove the moved item from the list (it might already be in this container)
+        all_items = [item for item in all_items if item['id'] != item_id]
+        
+        # Insert the moved item at the target position
+        if target_position is None:
+            target_position = len(all_items)
+        
+        target_position = max(0, min(target_position, len(all_items)))
+        
+        moved_item_entry = {
+            'id': item_id, 
+            'type': item_type, 
+            'order': target_position, 
+            'item': moved_item
+        }
+        all_items.insert(target_position, moved_item_entry)
+        
+        # Update order values for all items
+        for i, item_entry in enumerate(all_items):
+            item_entry['item']['order'] = i
+        
+        print(f"Reordered {len(all_items)} items in container {target_container}")
         
         save_data(data)
         return jsonify({'success': True})
