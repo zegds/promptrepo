@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prompt Repository</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
 * {
   margin: 0;
@@ -86,8 +85,7 @@ body {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #64748b;
-  font-size: 14px;
+  opacity: 0.6;
 }
 
 #searchInput {
@@ -192,14 +190,12 @@ body {
   color: #dc2626;
 }
 
-/* Drag handle */
 .drag-handle {
   opacity: 0;
   margin-right: 8px;
   cursor: grab;
-  color: #94a3b8;
+  opacity: 0.6;
   transition: opacity 0.2s;
-  font-size: 12px;
 }
 
 .folder-item:hover .drag-handle,
@@ -1023,6 +1019,10 @@ body {
     margin: 6px 0;
   }
 }
+
+img {
+  vertical-align: middle;
+}
     </style>
 </head>
 <body>
@@ -1040,14 +1040,14 @@ body {
             </div>
             <div class="action-buttons">
                 <button class="btn btn-outline" onclick="showAddPromptModal()">
-                    <i class="fas fa-plus"></i> Prompt
+                    <img src="/static/plus-solid.svg" width="14" height="14" alt="Plus"> Prompt
                 </button>
                 <button class="btn btn-outline" onclick="showAddFolderModal()">
-                    <i class="fas fa-folder-plus"></i> Folder
+                    <img src="/static/folder-plus-solid.svg" width="14" height="14" alt="Folder Plus"> Folder
                 </button>
             </div>
             <div class="search-container">
-                <i class="fas fa-search search-icon"></i>
+                <img src="/static/magnifying-glass-solid.svg" class="search-icon" width="14" height="14" alt="Search">
                 <input type="text" id="searchInput" placeholder="Search prompts..." oninput="handleSearch()">
             </div>
         </div>
@@ -1064,10 +1064,10 @@ body {
     <div class="main-content">
         <header class="main-header">
             <button class="sidebar-toggle" onclick="toggleSidebar()">
-                <i class="fas fa-bars"></i>
+                <img src="/static/bars-solid.svg" width="18" height="18" alt="Menu">
             </button>
             <div class="header-title">
-                <i class="fas fa-database"></i>
+                <img src="/static/database-solid.svg" width="16" height="16" alt="Database">
                 <span>Prompt Repository</span>
             </div>
         </header>
@@ -1090,23 +1090,23 @@ body {
                             </div>
                             <div class="prompt-actions">
                                 <button id="historyBtn" class="btn btn-outline hidden" onclick="showVersionHistory()">
-                                    <i class="fas fa-history"></i> History
+                                    <img src="/static/clock-rotate-left-solid.svg" width="14" height="14" alt="History"> History
                                 </button>
                                 <button class="btn btn-outline" onclick="editPrompt()">
-                                    <i class="fas fa-edit"></i> Edit
+                                    <img src="/static/pen-to-square-solid.svg" width="14" height="14" alt="Edit"> Edit
                                 </button>
                                 <button class="btn btn-outline" onclick="copyPrompt()">
-                                    <i class="fas fa-copy"></i> Copy
+                                    <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy"> Copy
                                 </button>
                                 <button class="btn btn-outline" onclick="deleteCurrentPrompt()">
-                                    <i class="fas fa-trash"></i> Delete
+                                    <img src="/static/trash-solid.svg" width="14" height="14" alt="Delete"> Delete
                                 </button>
                             </div>
                         </div>
                         <div class="prompt-content">
                             <pre id="promptText"></pre>
                             <button class="prompt-copy-btn" onclick="copyPrompt()" title="Copy prompt">
-                              <i class="fas fa-copy"></i>
+                              <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
                           </button>
                         </div>
                     </div>
@@ -1115,7 +1115,7 @@ body {
                         <div id="folderPrompts" class="folder-prompts"></div>
                     </div>
                     <div id="emptyState" class="empty-state">
-                        <i class="fas fa-database empty-icon"></i>
+                        <img src="/static/database-solid.svg" width="16" height="16" alt="Database" class="empty-icon">
                         <p>Select a prompt or folder to view its contents</p>
                     </div>
                 </div>
@@ -1124,7 +1124,7 @@ body {
                         <h2>Most used prompts</h2>
                         <div id="mostUsedList" class="most-used-list"></div>
                         <div id="noUsageState" class="empty-state">
-                            <i class="fas fa-copy empty-icon"></i>
+                            <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy" class="empty-icon">
                             <p>No prompts have been copied yet</p>
                             <p class="empty-subtitle">Start copying prompts to see usage statistics</p>
                         </div>
@@ -1156,7 +1156,7 @@ body {
             <div class="modal-actions">
                 <button type="button" class="btn btn-outline" onclick="closeModal('addPromptModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Save Prompt
+                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Prompt
                 </button>
             </div>
         </form>
@@ -1179,7 +1179,7 @@ body {
             <div class="modal-actions">
                 <button type="button" class="btn btn-outline" onclick="closeModal('addFolderModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Create Folder
+                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Create Folder
                 </button>
             </div>
         </form>
@@ -1204,10 +1204,10 @@ body {
         </div>
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="closeModal('editPromptModal')">
-                <i class="fas fa-times"></i> Cancel
+                <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete"> Cancel
             </button>
             <button type="button" class="btn btn-primary" onclick="saveEdit()">
-                <i class="fas fa-save"></i> Save Changes
+                <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Changes
             </button>
         </div>
     </div>
@@ -1225,7 +1225,7 @@ body {
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
             <button type="button" class="btn btn-danger" onclick="confirmDelete()">
-                <i class="fas fa-trash"></i> Delete
+                <img src="/static/trash-solid.svg" width="14" height="14" alt="Delete"> Delete
             </button>
         </div>
     </div>
@@ -1257,6 +1257,7 @@ let draggedType = null;
 let deleteTarget = null;
 let folderExpandTimeout = null;
 let dragPreview = null;
+let lastDragEndTime = 0;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -1425,11 +1426,11 @@ function renderPromptItem(prompt) {
              data-item-id="${prompt.id}"
              data-item-type="prompt"
              onclick="selectPrompt('${prompt.id}')">
-            <i class="drag-handle fas fa-grip-vertical"></i>
-            <i class="fas fa-file-text"></i>
+            <img src="/static/grip-vertical-solid.svg" width="12" height="12" alt="Drag Handle">
+            <img src="/static/file-lines-solid.svg" width="14" height="14" alt="File">
             <span class="prompt-name">${escapeHtml(prompt.name)}</span>
             <button class="delete-btn" onclick="event.stopPropagation(); confirmDeletePrompt('${prompt.id}', '${escapeHtml(prompt.name)}')">
-                <i class="fas fa-times"></i>
+                <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete">
             </button>
         </div>
     `;
@@ -1437,7 +1438,7 @@ function renderPromptItem(prompt) {
 
 function renderFolderItem(folder, filteredPrompts, level) {
     const isSelected = selectedFolder === folder.id;
-    const icon = folder.expanded ? 'fa-folder-open' : 'fa-folder';
+    const icon = folder.expanded ? 'folder-open-solid.svg' : 'folder-solid.svg';
     const folderPrompts = getPromptsInFolder(folder.id, true, filteredPrompts);
     const promptCount = folderPrompts.length;
     
@@ -1447,12 +1448,12 @@ function renderFolderItem(folder, filteredPrompts, level) {
              data-item-id="${folder.id}"
              data-item-type="folder"
              onclick="toggleFolder('${folder.id}')">
-            <i class="drag-handle fas fa-grip-vertical"></i>
-            <i class="fas ${icon}"></i>
+            <img src="/static/grip-vertical-solid.svg" width="12" height="12" alt="Drag Handle">
+            <img src="/static/${icon}" width="14" height="14" alt="Folder">
             <span class="folder-name">${escapeHtml(folder.name)}</span>
             <span class="folder-count">${promptCount}</span>
             <button class="delete-btn" onclick="event.stopPropagation(); confirmDeleteFolder('${folder.id}', '${escapeHtml(folder.name)}')">
-                <i class="fas fa-times"></i>
+                <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete">
             </button>
         </div>
     `;
@@ -1482,7 +1483,7 @@ function renderMostUsed() {
             <div class="most-used-item" onclick="selectPromptFromMostUsed('${prompt.id}')">
                 <div class="most-used-info">
                     <span class="rank-number">#${index + 1}</span>
-                    <i class="fas fa-file-text"></i>
+                    <img src="/static/file-lines-solid.svg" width="14" height="14" alt="File">
                     <div class="most-used-details">
                         <div class="most-used-name">${escapeHtml(prompt.name)}</div>
                         <div class="most-used-preview">${escapeHtml(preview)}</div>
@@ -1491,7 +1492,7 @@ function renderMostUsed() {
                 <div class="most-used-actions">
                     <span class="usage-count">${prompt.usageCount} uses</span>
                     <button class="btn btn-outline" onclick="event.stopPropagation(); copyPromptById('${prompt.id}')">
-                        <i class="fas fa-copy"></i>
+                        <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
                     </button>
                 </div>
             </div>
@@ -1573,6 +1574,9 @@ function handleDragEnd(e) {
         clearTimeout(folderExpandTimeout);
         folderExpandTimeout = null;
     }
+    
+    // Set drag end timestamp to prevent immediate folder toggle
+    lastDragEndTime = Date.now();
     
     // Reset drag state
     draggedItem = null;
@@ -1850,23 +1854,23 @@ function selectFolder(folderId) {
 }
 
 function toggleFolder(folderId) {
-    // Don't toggle if we're in the middle of a drag operation
-    if (draggedItem) return;
-    
-    const folder = data.folders.find(f => f.id === folderId);
-    if (folder) {
-        folder.expanded = !folder.expanded;
-        if (selectedFolder === folderId && !folder.expanded) {
-            selectedFolder = null;
-            showEmptyState();
-        } else if (selectedFolder !== folderId) {
-            selectFolder(folderId);
-        }
-        renderPromptList();
-        
-        // Save the folder state to backend
-        saveFolderState(folderId, folder.expanded);
-    }
+  // Don't toggle if we're in the middle of a drag operation or just finished one
+  if (draggedItem || Date.now() - lastDragEndTime < 100) return;
+  
+  const folder = data.folders.find(f => f.id === folderId);
+  if (folder) {
+      folder.expanded = !folder.expanded;
+      if (selectedFolder === folderId && !folder.expanded) {
+          selectedFolder = null;
+          showEmptyState();
+      } else if (selectedFolder !== folderId) {
+          selectFolder(folderId);
+      }
+      renderPromptList();
+      
+      // Save the folder state to backend
+      saveFolderState(folderId, folder.expanded);
+  }
 }
 
 // Save folder expanded state to backend
@@ -1942,7 +1946,7 @@ function showFolderDetails() {
         html += `
             <div class="folder-prompt-item" onclick="selectPrompt('${prompt.id}')">
                 <div class="folder-prompt-info">
-                    <i class="fas fa-file-text"></i>
+                    <img src="/static/file-lines-solid.svg" width="14" height="14" alt="File">
                     <span>${escapeHtml(prompt.name)}</span>
                     ${versionBadge}
                     ${usageBadge}
@@ -2160,7 +2164,7 @@ function showVersionHistory() {
         const currentBadge = isCurrent ? '<span class="current-badge">Current</span>' : '';
         const restoreButton = !isCurrent ? 
             `<button class="btn btn-outline" onclick="restoreVersion('${selectedPrompt.id}', '${version.id}')">
-                <i class="fas fa-undo"></i> Restore
+                <img src="/static/arrow-rotate-left-solid.svg" width="14" height="14" alt="Restore"> Restore
             </button>` : '';
             
         html += `
