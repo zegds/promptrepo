@@ -32,7 +32,7 @@ def load_data():
                         prompt['usageCount'] = 0
                     if 'order' not in prompt:
                         prompt['order'] = i
-                
+                        
                 # Ensure all folders have order field and parentId
                 for i, folder in enumerate(data.get('folders', [])):
                     if 'order' not in folder:
@@ -41,11 +41,11 @@ def load_data():
                         folder['parentId'] = None
                     if 'expanded' not in folder:
                         folder['expanded'] = False  # Always default to closed
-                
+                        
                 # Sort folders and prompts by order
                 data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
                 data['prompts'] = sorted(data.get('prompts', []), key=lambda x: x.get('order', 0))
-                
+                        
                 return data
         except json.JSONDecodeError:
             pass
@@ -254,106 +254,108 @@ def delete_folder(folder_id):
 @app.route('/api/items/move', methods=['POST'])
 def move_item():
     """Move an item (prompt or folder) to a new position with intelligent positioning"""
-    data = load_data()
-    move_data = request.json
-    
-    item_type = move_data.get('type')  # 'prompt' or 'folder'
-    item_id = move_data.get('itemId')
-    target_container = move_data.get('targetContainer')  # folder ID or null for root
-    target_position = move_data.get('targetPosition')  # index in the target container
-    
-    if item_type == 'prompt':
-        # Find the prompt
-        prompt = None
-        for p in data['prompts']:
-            if p['id'] == item_id:
-                prompt = p
-                break
+    try:
+        data = load_data()
+        move_data = request.json
         
-        if not prompt:
-            return jsonify({'error': 'Prompt not found'}), 404
+        item_type = move_data.get('type')  # 'prompt' or 'folder'
+        item_id = move_data.get('itemId')
+        target_container = move_data.get('targetContainer')  # folder ID or null for root
+        target_position = move_data.get('targetPosition')  # index in the target container
         
-        # Update folder
-        prompt['folderId'] = target_container
+        print(f"Moving {item_type} {item_id} to container {target_container} at position {target_position}")
         
-        # Get all items in the target container (folders + prompts)
-        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
-        container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
-        all_container_items = container_folders + container_prompts
-        
-        # If no position specified, put at end
-        if target_position is None:
-            target_position = len(all_container_items)
-        
-        # Clamp position to valid range
-        target_position = max(0, min(target_position, len(all_container_items)))
-        
-        # Reorder prompts in the target container
-        reordered_prompts = reorder_items_in_container(container_prompts, item_id, target_position - len(container_folders))
-        
-        # Update the main prompts list
-        for i, p in enumerate(data['prompts']):
-            if p.get('folderId') == target_container:
-                for reordered in reordered_prompts:
-                    if p['id'] == reordered['id']:
-                        data['prompts'][i] = reordered
-                        break
-    
-    elif item_type == 'folder':
-        # Find the folder
-        folder = None
-        for f in data['folders']:
-            if f['id'] == item_id:
-                folder = f
-                break
-        
-        if not folder:
-            return jsonify({'error': 'Folder not found'}), 404
-        
-        # Check for circular reference
-        def would_create_cycle(folder_id, target_parent_id):
-            if target_parent_id is None:
-                return False
-            if target_parent_id == folder_id:
-                return True
+        if item_type == 'prompt':
+            # Find the prompt
+            prompt = None
+            for p in data['prompts']:
+                if p['id'] == item_id:
+                    prompt = p
+                    break
             
+            if not prompt:
+                return jsonify({'error': 'Prompt not found'}), 404
+            
+            # Update folder
+            prompt['folderId'] = target_container
+            
+            # Get all prompts in the target container
+            container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
+            
+            # If no position specified, put at end
+            if target_position is None:
+                target_position = len(container_prompts) - 1  # -1 because we're already in the list
+            
+            # Clamp position to valid range
+            target_position = max(0, min(target_position, len(container_prompts) - 1))
+            
+            # Reorder prompts in the target container
+            reordered_prompts = reorder_items_in_container(container_prompts, item_id, target_position)
+            
+            # Update the main prompts list
+            for i, p in enumerate(data['prompts']):
+                if p.get('folderId') == target_container:
+                    for reordered in reordered_prompts:
+                        if p['id'] == reordered['id']:
+                            data['prompts'][i] = reordered
+                            break
+        
+        elif item_type == 'folder':
+            # Find the folder
+            folder = None
             for f in data['folders']:
-                if f['id'] == target_parent_id:
-                    return would_create_cycle(folder_id, f.get('parentId'))
-            return False
+                if f['id'] == item_id:
+                    folder = f
+                    break
+            
+            if not folder:
+                return jsonify({'error': 'Folder not found'}), 404
+            
+            # Check for circular reference
+            def would_create_cycle(folder_id, target_parent_id):
+                if target_parent_id is None:
+                    return False
+                if target_parent_id == folder_id:
+                    return True
+                
+                for f in data['folders']:
+                    if f['id'] == target_parent_id:
+                        return would_create_cycle(folder_id, f.get('parentId'))
+                return False
+            
+            if would_create_cycle(item_id, target_container):
+                return jsonify({'error': 'Cannot create circular reference'}), 400
+            
+            # Update parent
+            folder['parentId'] = target_container
+            
+            # Get all folders in the target container
+            container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+            
+            # If no position specified, put at end
+            if target_position is None:
+                target_position = len(container_folders) - 1  # -1 because we're already in the list
+            
+            # Clamp position to valid range
+            target_position = max(0, min(target_position, len(container_folders) - 1))
+            
+            # Reorder folders in the target container
+            reordered_folders = reorder_items_in_container(container_folders, item_id, target_position)
+            
+            # Update the main folders list
+            for i, f in enumerate(data['folders']):
+                if f.get('parentId') == target_container:
+                    for reordered in reordered_folders:
+                        if f['id'] == reordered['id']:
+                            data['folders'][i] = reordered
+                            break
         
-        if would_create_cycle(item_id, target_container):
-            return jsonify({'error': 'Cannot create circular reference'}), 400
+        save_data(data)
+        return jsonify({'success': True})
         
-        # Update parent
-        folder['parentId'] = target_container
-        
-        # Get all items in the target container
-        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
-        container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
-        all_container_items = container_folders + container_prompts
-        
-        # If no position specified, put at end
-        if target_position is None:
-            target_position = len(all_container_items)
-        
-        # Clamp position to valid range
-        target_position = max(0, min(target_position, len(all_container_items)))
-        
-        # Reorder folders in the target container
-        reordered_folders = reorder_items_in_container(container_folders, item_id, min(target_position, len(container_folders)))
-        
-        # Update the main folders list
-        for i, f in enumerate(data['folders']):
-            if f.get('parentId') == target_container:
-                for reordered in reordered_folders:
-                    if f['id'] == reordered['id']:
-                        data['folders'][i] = reordered
-                        break
-    
-    save_data(data)
-    return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error in move_item: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
