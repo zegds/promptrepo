@@ -1883,6 +1883,58 @@ function wouldCreateCycle(folderId, targetParentId) {
     return wouldCreateCycle(folderId, targetFolder.parentId);
 }
 
+// Helper function to check if a prompt belongs to a folder (including nested folders)
+function isPromptInFolder(promptId, folderId) {
+    const prompt = data.prompts.find(p => p.id === promptId);
+    if (!prompt) return false;
+    
+    // Check if prompt is directly in this folder
+    if (prompt.folderId === folderId) return true;
+    
+    // Check if prompt is in any subfolder of this folder
+    function checkSubfolders(parentId) {
+        const subfolders = data.folders.filter(f => f.parentId === parentId);
+        for (const subfolder of subfolders) {
+            if (prompt.folderId === subfolder.id) return true;
+            if (checkSubfolders(subfolder.id)) return true;
+        }
+        return false;
+    }
+    
+    return checkSubfolders(folderId);
+}
+
+function toggleFolder(folderId) {
+    // Don't toggle if we're in the middle of a drag operation or just finished one
+    if (draggedItem || Date.now() - lastDragEndTime < 500) {
+        console.log('Folder toggle blocked - recent drag operation');
+        return;
+    }
+    
+    const folder = data.folders.find(f => f.id === folderId);
+    if (folder) {
+        folder.expanded = !folder.expanded;
+        
+        // If we're closing a folder, check if the selected prompt is inside it
+        if (!folder.expanded && selectedPrompt && isPromptInFolder(selectedPrompt.id, folderId)) {
+            console.log('Clearing selected prompt - it was inside the closed folder');
+            selectedPrompt = null;
+            showEmptyState();
+        }
+        
+        // Clear folder selection if this folder is being closed and was selected
+        if (selectedFolder === folderId && !folder.expanded) {
+            selectedFolder = null;
+            showEmptyState();
+        } else if (selectedFolder !== folderId && folder.expanded) {
+            // Only select folder if it's being opened and not already selected
+            selectFolder(folderId);
+        }
+        
+        renderPromptList();
+    }
+}
+
 // Handle direct folder drops
 async function handleDirectFolderDrop(folderId) {
     console.log(`Direct folder drop: ${draggedType} ${draggedItem} to folder ${folderId}`);
@@ -1972,26 +2024,6 @@ function selectFolder(folderId) {
     selectedPrompt = null;
     renderPromptList();
     showFolderDetails();
-}
-
-function toggleFolder(folderId) {
-    // Don't toggle if we're in the middle of a drag operation or just finished one
-    if (draggedItem || Date.now() - lastDragEndTime < 500) {
-        console.log('Folder toggle blocked - recent drag operation');
-        return;
-    }
-    
-    const folder = data.folders.find(f => f.id === folderId);
-    if (folder) {
-        folder.expanded = !folder.expanded;
-        if (selectedFolder === folderId && !folder.expanded) {
-            selectedFolder = null;
-            showEmptyState();
-        } else if (selectedFolder !== folderId) {
-            selectFolder(folderId);
-        }
-        renderPromptList();
-    }
 }
 
 // Display functions
