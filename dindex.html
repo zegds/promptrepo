@@ -1023,6 +1023,65 @@ body {
 img {
   vertical-align: middle;
 }
+
+/* SVG Icon Styling */
+img[src*="/static/"] {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  vertical-align: middle;
+}
+
+/* Icon color variations */
+.search-icon img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  opacity: 0.6;
+}
+
+.delete-btn img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+}
+
+.delete-btn:hover img {
+  filter: brightness(0) saturate(100%) invert(15%) sepia(91%) saturate(2140%) hue-rotate(349deg) brightness(99%) contrast(88%);
+}
+
+.drag-handle img {
+  filter: brightness(0) saturate(100%) invert(64%) sepia(6%) saturate(394%) hue-rotate(201deg) brightness(92%) contrast(92%);
+  opacity: 0.6;
+}
+
+.folder-item:hover .drag-handle img,
+.prompt-item:hover .drag-handle img {
+  opacity: 1;
+}
+
+.btn img {
+  filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+}
+
+.btn-primary img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(7500%) hue-rotate(109deg) brightness(107%) contrast(107%);
+}
+
+.btn-danger img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(7500%) hue-rotate(109deg) brightness(107%) contrast(107%);
+}
+
+.header-title img {
+  filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+}
+
+.empty-icon {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  opacity: 0.5;
+}
+
+.most-used-info img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+}
+
+.folder-prompt-info img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+}
     </style>
 </head>
 <body>
