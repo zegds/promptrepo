@@ -307,9 +307,24 @@ body {
 }
 
 .folder-item.drag-hover {
-  background-color: #f0f9ff !important;
-  border-left: 4px solid #3b82f6;
-  transform: translateX(2px);
+    background-color: #f0f9ff !important;
+    border: 2px solid #3b82f6 !important;
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.folder-item.drag-hover::after {
+    content: 'Drop to add to folder';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #3b82f6;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
 }
 
 /* Drag preview */
@@ -1490,6 +1505,7 @@ function renderMostUsed() {
 function setupDragAndDrop() {
     const draggableItems = document.querySelectorAll('.prompt-item[draggable="true"], .folder-item[draggable="true"]');
     const dropZones = document.querySelectorAll('.drop-zone, .folder-drop-zone');
+    const folderItems = document.querySelectorAll('.folder-item');
     
     // Setup draggable items
     draggableItems.forEach(item => {
@@ -1505,11 +1521,12 @@ function setupDragAndDrop() {
         zone.addEventListener('drop', handleDrop);
     });
     
-    // Setup folder hover for expansion
-    const folderItems = document.querySelectorAll('.folder-item');
+    // Setup folder items for direct dropping
     folderItems.forEach(folder => {
-        folder.addEventListener('dragover', handleFolderDragOver);
-        folder.addEventListener('dragleave', handleFolderDragLeave);
+        folder.addEventListener('dragover', handleFolderItemDragOver);
+        folder.addEventListener('dragenter', handleFolderItemDragEnter);
+        folder.addEventListener('dragleave', handleFolderItemDragLeave);
+        folder.addEventListener('drop', handleFolderItemDrop);
     });
 }
 
@@ -1582,9 +1599,9 @@ function handleDragEnter(e) {
     const dropZone = e.currentTarget;
     
     // Clear other active states
-    document.querySelectorAll('.drop-zone.drag-over, .folder-drop-zone.drag-over').forEach(el => {
+    document.querySelectorAll('.drop-zone.drag-over, .folder-drop-zone.drag-over, .folder-item.drag-hover').forEach(el => {
         if (el !== dropZone) {
-            el.classList.remove('drag-over');
+            el.classList.remove('drag-over', 'drag-hover');
         }
     });
     
@@ -1628,21 +1645,52 @@ function handleDrop(e) {
     console.log('Drop handled');
 }
 
-function handleFolderDragOver(e) {
+// New handlers for direct folder item drops
+function handleFolderItemDragOver(e) {
     if (!draggedItem) return;
     
     const folderItem = e.currentTarget;
     const folderId = folderItem.dataset.itemId;
     
-    // Don't allow dropping on self
+    // Don't allow dropping folder on itself
     if (folderId === draggedItem) return;
     
+    // Don't allow dropping folder on its own child
+    if (draggedType === 'folder' && wouldCreateCycle(draggedItem, folderId)) return;
+    
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Update drag preview position
+    dragPreview.style.left = (e.clientX + 10) + 'px';
+    dragPreview.style.top = (e.clientY + 10) + 'px';
+}
+
+function handleFolderItemDragEnter(e) {
+    if (!draggedItem) return;
+    
+    const folderItem = e.currentTarget;
+    const folderId = folderItem.dataset.itemId;
+    
+    // Don't allow dropping folder on itself
+    if (folderId === draggedItem) return;
+    
+    // Don't allow dropping folder on its own child
+    if (draggedType === 'folder' && wouldCreateCycle(draggedItem, folderId)) return;
+    
+    e.preventDefault();
+    
+    // Clear other active states
+    document.querySelectorAll('.drop-zone.drag-over, .folder-drop-zone.drag-over, .folder-item.drag-hover').forEach(el => {
+        if (el !== folderItem) {
+            el.classList.remove('drag-over', 'drag-hover');
+        }
+    });
     
     // Add hover state
     folderItem.classList.add('drag-hover');
     
-    // Auto-expand folder after delay
+    // Auto-expand folder after delay (but preserve state)
     if (folderExpandTimeout) {
         clearTimeout(folderExpandTimeout);
     }
@@ -1654,9 +1702,11 @@ function handleFolderDragOver(e) {
             renderPromptList();
         }
     }, 1000);
+    
+    console.log('Drag enter on folder item');
 }
 
-function handleFolderDragLeave(e) {
+function handleFolderItemDragLeave(e) {
     if (!draggedItem) return;
     
     const folderItem = e.currentTarget;
@@ -1674,50 +1724,57 @@ function handleFolderDragLeave(e) {
     }
 }
 
-// Handle position-based drops
-async function handlePositionDrop(dropZone) {
-    const parentId = dropZone.dataset.parentId || null;
-    const position = parseInt(dropZone.dataset.position);
+function handleFolderItemDrop(e) {
+    if (!draggedItem) return;
     
-    console.log(`Position drop: ${draggedType} ${draggedItem} to container ${parentId} at position ${position}`);
+    e.preventDefault();
+    e.stopPropagation();
     
-    const result = await apiCall('/api/items/move', {
-        method: 'POST',
-        body: JSON.stringify({
-            type: draggedType,
-            itemId: draggedItem,
-            targetContainer: parentId,
-            targetPosition: position
-        })
-    });
+    const folderItem = e.currentTarget;
+    const folderId = folderItem.dataset.itemId;
     
-    if (result && result.success) {
-        await loadData();
-        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
-    } else {
-        showToast('Failed to move item');
-    }
+    // Don't allow dropping folder on itself
+    if (folderId === draggedItem) return;
+    
+    // Don't allow dropping folder on its own child
+    if (draggedType === 'folder' && wouldCreateCycle(draggedItem, folderId)) return;
+    
+    folderItem.classList.remove('drag-hover');
+    
+    console.log(`Direct folder drop: ${draggedType} ${draggedItem} into folder ${folderId}`);
+    
+    // Move item into the folder
+    handleDirectFolderDrop(folderId);
 }
 
-// Handle folder nesting drops
-async function handleFolderDrop(dropZone) {
-    const parentId = dropZone.dataset.parentId || null;
+// Helper function to check for circular references
+function wouldCreateCycle(folderId, targetParentId) {
+    if (!targetParentId) return false;
+    if (targetParentId === folderId) return true;
     
-    console.log(`Folder drop: ${draggedType} ${draggedItem} to folder ${parentId}`);
+    const targetFolder = data.folders.find(f => f.id === targetParentId);
+    if (!targetFolder) return false;
+    
+    return wouldCreateCycle(folderId, targetFolder.parentId);
+}
+
+// Handle direct folder drops
+async function handleDirectFolderDrop(folderId) {
+    console.log(`Direct folder drop: ${draggedType} ${draggedItem} to folder ${folderId}`);
     
     const result = await apiCall('/api/items/move', {
         method: 'POST',
         body: JSON.stringify({
             type: draggedType,
             itemId: draggedItem,
-            targetContainer: parentId,
+            targetContainer: folderId,
             targetPosition: null // null means end of container
         })
     });
     
     if (result && result.success) {
         await loadData();
-        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root'}`);
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to folder`);
     } else {
         showToast('Failed to move item');
     }
@@ -1744,6 +1801,9 @@ function selectFolder(folderId) {
 }
 
 function toggleFolder(folderId) {
+    // Don't toggle if we're in the middle of a drag operation
+    if (draggedItem) return;
+    
     const folder = data.folders.find(f => f.id === folderId);
     if (folder) {
         folder.expanded = !folder.expanded;
@@ -1754,6 +1814,21 @@ function toggleFolder(folderId) {
             selectFolder(folderId);
         }
         renderPromptList();
+        
+        // Save the folder state to backend
+        saveFolderState(folderId, folder.expanded);
+    }
+}
+
+// Save folder expanded state to backend
+async function saveFolderState(folderId, expanded) {
+    // Update the folder state in our data
+    const folder = data.folders.find(f => f.id === folderId);
+    if (folder) {
+        folder.expanded = expanded;
+        
+        // You could add an API endpoint to save folder states if needed
+        // For now, the state is preserved in memory during the session
     }
 }
 
@@ -2128,3 +2203,4 @@ showEmptyState();
 </script>
 </body>
 </html>
+
