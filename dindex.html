@@ -190,12 +190,24 @@ body {
   color: #dc2626;
 }
 
+/* Drag handle - hidden by default, shown on hover */
 .drag-handle {
   opacity: 0;
   margin-right: 8px;
   cursor: grab;
-  opacity: 0.6;
   transition: opacity 0.2s;
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-handle img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 12px !important;
+  height: 12px !important;
+  opacity: 1;
 }
 
 .folder-item:hover .drag-handle,
@@ -1024,38 +1036,74 @@ img {
   vertical-align: middle;
 }
 
-/* SVG Icon Styling */
+/* SVG Icon Styling - Match Font Awesome exactly */
 img[src*="/static/"] {
   filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
   vertical-align: middle;
+  display: inline-block;
 }
 
-/* Icon color variations */
+/* Specific icon sizing to match Font Awesome */
 .search-icon img {
   filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
   opacity: 0.6;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .delete-btn img {
   filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 12px !important;
+  height: 12px !important;
 }
 
 .delete-btn:hover img {
   filter: brightness(0) saturate(100%) invert(15%) sepia(91%) saturate(2140%) hue-rotate(349deg) brightness(99%) contrast(88%);
 }
 
-.drag-handle img {
-  filter: brightness(0) saturate(100%) invert(64%) sepia(6%) saturate(394%) hue-rotate(201deg) brightness(92%) contrast(92%);
-  opacity: 0.6;
+/* Drag handle - hidden by default, shown on hover */
+.drag-handle {
+  opacity: 0;
+  margin-right: 8px;
+  cursor: grab;
+  transition: opacity 0.2s;
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.folder-item:hover .drag-handle img,
-.prompt-item:hover .drag-handle img {
+.drag-handle img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 12px !important;
+  height: 12px !important;
   opacity: 1;
+}
+
+.folder-item:hover .drag-handle,
+.prompt-item:hover .drag-handle {
+  opacity: 1;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* File and folder icons with proper spacing */
+.prompt-item img[src*="file-lines"],
+.folder-item img[src*="folder"] {
+  margin-right: 8px;
+  width: 14px !important;
+  height: 14px !important;
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
 }
 
 .btn img {
   filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+  width: 14px !important;
+  height: 14px !important;
+  margin-right: 6px;
 }
 
 .btn-primary img {
@@ -1068,19 +1116,42 @@ img[src*="/static/"] {
 
 .header-title img {
   filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+  width: 16px !important;
+  height: 16px !important;
+  margin-right: 8px;
 }
 
 .empty-icon {
   filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
   opacity: 0.5;
+  width: 48px !important;
+  height: 48px !important;
 }
 
 .most-used-info img {
   filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 14px !important;
+  height: 14px !important;
+  margin-right: 8px;
 }
 
 .folder-prompt-info img {
   filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 14px !important;
+  height: 14px !important;
+  margin-right: 8px;
+}
+
+.sidebar-toggle img {
+  filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.prompt-copy-btn img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 14px !important;
+  height: 14px !important;
 }
     </style>
 </head>
@@ -1485,7 +1556,9 @@ function renderPromptItem(prompt) {
              data-item-id="${prompt.id}"
              data-item-type="prompt"
              onclick="selectPrompt('${prompt.id}')">
-            <img src="/static/grip-vertical-solid.svg" width="12" height="12" alt="Drag Handle">
+            <div class="drag-handle">
+                <img src="/static/grip-vertical-solid.svg" width="12" height="12" alt="Drag Handle">
+            </div>
             <img src="/static/file-lines-solid.svg" width="14" height="14" alt="File">
             <span class="prompt-name">${escapeHtml(prompt.name)}</span>
             <button class="delete-btn" onclick="event.stopPropagation(); confirmDeletePrompt('${prompt.id}', '${escapeHtml(prompt.name)}')">
@@ -1507,7 +1580,9 @@ function renderFolderItem(folder, filteredPrompts, level) {
              data-item-id="${folder.id}"
              data-item-type="folder"
              onclick="toggleFolder('${folder.id}')">
-            <img src="/static/grip-vertical-solid.svg" width="12" height="12" alt="Drag Handle">
+            <div class="drag-handle">
+                <img src="/static/grip-vertical-solid.svg" width="12" height="12" alt="Drag Handle">
+            </div>
             <img src="/static/${icon}" width="14" height="14" alt="Folder">
             <span class="folder-name">${escapeHtml(folder.name)}</span>
             <span class="folder-count">${promptCount}</span>
@@ -1753,18 +1828,8 @@ function handleFolderItemDragEnter(e) {
     // Add hover state
     folderItem.classList.add('drag-hover');
     
-    // Auto-expand folder after delay (but preserve state)
-    if (folderExpandTimeout) {
-        clearTimeout(folderExpandTimeout);
-    }
-    
-    folderExpandTimeout = setTimeout(() => {
-        const folder = data.folders.find(f => f.id === folderId);
-        if (folder && !folder.expanded) {
-            folder.expanded = true;
-            renderPromptList();
-        }
-    }, 1000);
+    // Don't auto-expand folders during drag to prevent accidental opening
+    // Users can manually expand folders if needed before dragging
     
     console.log('Drag enter on folder item');
 }
@@ -1886,7 +1951,7 @@ async function handleFolderDrop(dropZone) {
     
     if (result && result.success) {
         await loadData();
-        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root'}`);
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root' : 'root'}`);
     } else {
         showToast('Failed to move item');
     }
@@ -1913,23 +1978,23 @@ function selectFolder(folderId) {
 }
 
 function toggleFolder(folderId) {
-  // Don't toggle if we're in the middle of a drag operation or just finished one
-  if (draggedItem || Date.now() - lastDragEndTime < 100) return;
-  
-  const folder = data.folders.find(f => f.id === folderId);
-  if (folder) {
-      folder.expanded = !folder.expanded;
-      if (selectedFolder === folderId && !folder.expanded) {
-          selectedFolder = null;
-          showEmptyState();
-      } else if (selectedFolder !== folderId) {
-          selectFolder(folderId);
-      }
-      renderPromptList();
-      
-      // Save the folder state to backend
-      saveFolderState(folderId, folder.expanded);
-  }
+    // Don't toggle if we're in the middle of a drag operation or just finished one
+    if (draggedItem || Date.now() - lastDragEndTime < 200) return;
+    
+    const folder = data.folders.find(f => f.id === folderId);
+    if (folder) {
+        folder.expanded = !folder.expanded;
+        if (selectedFolder === folderId && !folder.expanded) {
+            selectedFolder = null;
+            showEmptyState();
+        } else if (selectedFolder !== folderId) {
+            selectFolder(folderId);
+        }
+        renderPromptList();
+        
+        // Save the folder state to backend
+        saveFolderState(folderId, folder.expanded);
+    }
 }
 
 // Save folder expanded state to backend
@@ -1939,8 +2004,16 @@ async function saveFolderState(folderId, expanded) {
     if (folder) {
         folder.expanded = expanded;
         
-        // You could add an API endpoint to save folder states if needed
-        // For now, the state is preserved in memory during the session
+        // Save to backend (you can add this API endpoint to app.py if needed)
+        try {
+            await apiCall(`/api/folders/${folderId}/state`, {
+                method: 'PUT',
+                body: JSON.stringify({ expanded })
+            });
+        } catch (error) {
+            console.log('Could not save folder state:', error);
+            // Non-critical error, continue without showing toast
+        }
     }
 }
 
