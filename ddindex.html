@@ -1485,7 +1485,7 @@ function getPromptsInFolder(folderId, includeSubfolders = false, filteredPrompts
 // Render functions
 function renderPromptList() {
     const container = document.getElementById('promptList');
-    const filteredPrompts = getFilteredPrompts();
+    const filteredPrompts = getFilter edPrompts();
     
     let html = '';
     html += renderContainer(null, filteredPrompts);
@@ -1828,9 +1828,6 @@ function handleFolderItemDragEnter(e) {
     // Add hover state
     folderItem.classList.add('drag-hover');
     
-    // Don't auto-expand folders during drag to prevent accidental opening
-    // Users can manually expand folders if needed before dragging
-    
     console.log('Drag enter on folder item');
 }
 
@@ -1979,7 +1976,10 @@ function selectFolder(folderId) {
 
 function toggleFolder(folderId) {
     // Don't toggle if we're in the middle of a drag operation or just finished one
-    if (draggedItem || Date.now() - lastDragEndTime < 200) return;
+    if (draggedItem || Date.now() - lastDragEndTime < 500) {
+        console.log('Folder toggle blocked - recent drag operation');
+        return;
+    }
     
     const folder = data.folders.find(f => f.id === folderId);
     if (folder) {
@@ -1991,17 +1991,6 @@ function toggleFolder(folderId) {
             selectFolder(folderId);
         }
         renderPromptList();
-        
-// Save folder expanded state to backend
-async function saveFolderState(folderId, expanded) {
-    // Update the folder state in our data
-    const folder = data.folders.find(f => f.id === folderId);
-    if (folder) {
-        folder.expanded = expanded;
-        
-        // For now, just keep state in memory during session
-        // You can add a backend endpoint later if persistent state is needed
-        console.log(`Folder ${folderId} expanded state: ${expanded}`);
     }
 }
 
