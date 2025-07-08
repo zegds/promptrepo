@@ -268,29 +268,28 @@ body {
   transition: background-color 0.2s;
 }
 
-/* Enhanced drop zones for professional UX */
+/* Enhanced drop zones for real-time feedback */
 .drop-zone {
   height: 2px;
   margin: 1px 0;
   border-radius: 1px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   opacity: 0;
   position: relative;
   background-color: transparent;
 }
 
-.drop-zone.drag-over {
+.drop-zone.active {
   background-color: #3b82f6;
   opacity: 1;
-  height: 32px;
-  margin: 12px 0;
+  height: 24px;
+  margin: 8px 0;
   box-shadow: 
     0 0 0 1px rgba(59, 130, 246, 0.3),
-    0 4px 12px rgba(59, 130, 246, 0.15);
-  transform: scaleY(1);
+    0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
-.drop-zone.drag-over::before {
+.drop-zone.active::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -302,7 +301,7 @@ body {
   border-radius: 1px;
 }
 
-.drop-zone.drag-over::after {
+.drop-zone.active::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -314,38 +313,79 @@ body {
   transform: translateY(-50%);
 }
 
-/* Folder drop zone styling with enhanced UX */
+/* Folder drop zone for nesting */
 .folder-drop-zone {
-  min-height: 8px;
+  min-height: 4px;
   border-radius: 6px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  margin: 4px 0;
+  transition: all 0.15s ease;
+  margin: 2px 0;
   opacity: 0;
+  position: relative;
 }
 
-.folder-drop-zone.drag-over {
+.folder-drop-zone.active {
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border: 2px dashed #0ea5e9;
-  min-height: 48px;
-  margin: 12px 0;
+  min-height: 32px;
+  margin: 6px 0;
   opacity: 1;
   box-shadow: 
     0 0 0 1px rgba(14, 165, 233, 0.2),
-    0 4px 12px rgba(14, 165, 233, 0.1);
-  transform: scale(1.02);
+    0 2px 8px rgba(14, 165, 233, 0.15);
 }
 
-.folder-drop-zone.drag-over::before {
-  content: 'Drop here to add to folder';
+.folder-drop-zone.active::before {
+  content: 'Drop to add to folder';
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
   color: #0ea5e9;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Real-time drag feedback */
+.drag-placeholder {
+  background-color: #f1f5f9;
+  border: 2px dashed #cbd5e1;
+  border-radius: 6px;
+  height: 40px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.drag-ghost {
+  opacity: 0.3;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+/* Enhanced drag states */
+.prompt-item.dragging,
+.folder-item.dragging {
+  opacity: 0.8;
+  transform: rotate(1deg) scale(1.02);
+  z-index: 1000;
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(59, 130, 246, 0.2);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+/* Folder expansion on drag over */
+.folder-item.drag-hover {
+  background-color: #f0f9ff !important;
+  border-left: 3px solid #3b82f6;
 }
 
 /* Main Content Styles */
@@ -956,30 +996,6 @@ body {
   opacity: 1;
 }
 
-/* Enhanced drag states with professional polish */
-.prompt-item.dragging,
-.folder-item.dragging {
-  opacity: 0.7;
-  transform: rotate(1deg) scale(1.05);
-  z-index: 1000;
-  box-shadow: 
-    0 10px 25px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(59, 130, 246, 0.2);
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-}
-
-/* Drag feedback improvements */
-.dragging-active .drop-zone {
-  opacity: 0.3;
-  height: 4px;
-}
-
-.dragging-active .folder-drop-zone {
-  opacity: 0.3;
-  min-height: 16px;
-}
-
 /* Utility Classes */
 .hidden {
   display: none !important;
@@ -1039,14 +1055,14 @@ body {
     font-size: 12px;
   }
 
-  .drop-zone.drag-over {
-    height: 24px;
-    margin: 8px 0;
+  .drop-zone.active {
+    height: 20px;
+    margin: 6px 0;
   }
 
-  .folder-drop-zone.drag-over {
-    min-height: 36px;
-    margin: 8px 0;
+  .folder-drop-zone.active {
+    min-height: 28px;
+    margin: 4px 0;
   }
 }
     </style>
@@ -1283,10 +1299,11 @@ let selectedFolder = null;
 let searchQuery = '';
 let activeTab = 'repository';
 let draggedItem = null;
-let draggedType = null; // 'prompt' or 'folder'
+let draggedType = null;
 let deleteTarget = null;
-let dragStartY = 0;
-let lastValidDropZone = null;
+let dragPlaceholder = null;
+let currentDropZone = null;
+let folderExpandTimeout = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -1339,9 +1356,6 @@ function setupEventListeners() {
             }
         }
     });
-
-    // Global drag tracking for intelligent positioning
-    document.addEventListener('dragover', handleGlobalDragOver);
 }
 
 // Search functionality
@@ -1362,39 +1376,6 @@ function getFilteredPrompts() {
     return data.prompts.filter(prompt => 
         prompt.text.toLowerCase().includes(searchQuery.toLowerCase())
     );
-}
-
-// Helper function to build folder hierarchy
-function buildFolderHierarchy() {
-    const folderMap = {};
-    const rootFolders = [];
-    
-    // Create folder map and initialize children arrays
-    data.folders.forEach(folder => {
-        folderMap[folder.id] = { ...folder, children: [] };
-    });
-    
-    // Build hierarchy
-    data.folders.forEach(folder => {
-        if (folder.parentId && folderMap[folder.parentId]) {
-            folderMap[folder.parentId].children.push(folderMap[folder.id]);
-        } else {
-            rootFolders.push(folderMap[folder.id]);
-        }
-    });
-    
-    // Sort each level by order
-    function sortChildren(folders) {
-        folders.sort((a, b) => (a.order || 0) - (b.order || 0));
-        folders.forEach(folder => {
-            if (folder.children.length > 0) {
-                sortChildren(folder.children);
-            }
-        });
-    }
-    
-    sortChildren(rootFolders);
-    return rootFolders;
 }
 
 // Helper function to get all prompts in a folder (including subfolders)
@@ -1418,10 +1399,7 @@ function renderPromptList() {
     const filteredPrompts = getFilteredPrompts();
     
     let html = '';
-    
-    // Render root level items (folders and prompts mixed)
     html += renderContainer(null, filteredPrompts);
-    
     container.innerHTML = html;
 }
 
@@ -1460,7 +1438,7 @@ function renderContainer(parentId, filteredPrompts, level = 0) {
         html += renderDropZone(parentId, index + 1);
     });
     
-    // Add folder drop zone for adding items to this container
+    // Add folder drop zone for nesting
     html += renderFolderDropZone(parentId);
     
     return html;
@@ -1469,18 +1447,12 @@ function renderContainer(parentId, filteredPrompts, level = 0) {
 function renderDropZone(parentId, position) {
     return `<div class="drop-zone" 
                  data-parent-id="${parentId || ''}" 
-                 data-position="${position}"
-                 ondrop="handlePositionDrop(event)" 
-                 ondragover="handleDragOver(event)" 
-                 ondragleave="handleDragLeave(event)"></div>`;
+                 data-position="${position}"></div>`;
 }
 
 function renderFolderDropZone(parentId) {
     return `<div class="folder-drop-zone" 
-                 data-parent-id="${parentId || ''}"
-                 ondrop="handleFolderDrop(event)" 
-                 ondragover="handleDragOver(event)" 
-                 ondragleave="handleDragLeave(event)"></div>`;
+                 data-parent-id="${parentId || ''}"></div>`;
 }
 
 function renderPromptItem(prompt) {
@@ -1491,8 +1463,6 @@ function renderPromptItem(prompt) {
              draggable="true"
              data-item-id="${prompt.id}"
              data-item-type="prompt"
-             ondragstart="handleDragStart(event)"
-             ondragend="handleDragEnd(event)"
              onclick="selectPrompt('${prompt.id}')">
             <i class="drag-handle fas fa-grip-vertical"></i>
             <i class="fas fa-file-text"></i>
@@ -1515,8 +1485,6 @@ function renderFolderItem(folder, filteredPrompts, level) {
              draggable="true"
              data-item-id="${folder.id}"
              data-item-type="folder"
-             ondragstart="handleDragStart(event)"
-             ondragend="handleDragEnd(event)"
              onclick="toggleFolder('${folder.id}')">
             <i class="drag-handle fas fa-grip-vertical"></i>
             <i class="fas ${icon}"></i>
@@ -1586,10 +1554,6 @@ function selectPromptFromMostUsed(promptId) {
 }
 
 function selectFolder(folderId) {
-    selectedFolder = folderId;
-    selectedPrompt = null;
-    renderPromptList();
-    showFolder
     selectedFolder = folderId;
     selectedPrompt = null;
     renderPromptList();
@@ -1710,107 +1674,134 @@ function switchTab(tabName) {
     }
 }
 
-// Enhanced drag and drop functionality with intelligent positioning
-function handleDragStart(event) {
-    const element = event.currentTarget;
-    draggedItem = element.dataset.itemId;
-    draggedType = element.dataset.itemType;
-    dragStartY = event.clientY;
-    lastValidDropZone = null;
+// Real-time drag and drop with live feedback
+document.addEventListener('dragstart', function(e) {
+    const item = e.target.closest('.prompt-item, .folder-item');
+    if (!item) return;
     
-    element.classList.add('dragging');
-    document.body.classList.add('dragging-active');
+    draggedItem = item.dataset.itemId;
+    draggedType = item.dataset.itemType;
     
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', `${draggedType}:${draggedItem}`);
-}
+    // Create drag placeholder
+    dragPlaceholder = document.createElement('div');
+    dragPlaceholder.className = 'drag-placeholder';
+    dragPlaceholder.textContent = `Moving ${draggedType}...`;
+    
+    // Insert placeholder and hide original
+    item.parentNode.insertBefore(dragPlaceholder, item);
+    item.classList.add('drag-ghost');
+    
+    // Set drag data
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `${draggedType}:${draggedItem}`);
+});
 
-function handleDragEnd(event) {
-    event.currentTarget.classList.remove('dragging');
-    document.body.classList.remove('dragging-active');
+document.addEventListener('dragend', function(e) {
+    const item = e.target.closest('.prompt-item, .folder-item');
+    if (!item) return;
     
-    // Clean up all drag states
-    document.querySelectorAll('.drag-over, .drag-over-folder').forEach(el => {
-        el.classList.remove('drag-over', 'drag-over-folder');
+    // Clean up
+    if (dragPlaceholder && dragPlaceholder.parentNode) {
+        dragPlaceholder.parentNode.removeChild(dragPlaceholder);
+    }
+    
+    item.classList.remove('drag-ghost');
+    
+    // Clear all active states
+    document.querySelectorAll('.drop-zone.active, .folder-drop-zone.active, .folder-item.drag-hover').forEach(el => {
+        el.classList.remove('active', 'drag-hover');
     });
+    
+    // Clear timeouts
+    if (folderExpandTimeout) {
+        clearTimeout(folderExpandTimeout);
+        folderExpandTimeout = null;
+    }
     
     draggedItem = null;
     draggedType = null;
-    dragStartY = 0;
-    lastValidDropZone = null;
-}
+    dragPlaceholder = null;
+    currentDropZone = null;
+});
 
-function handleGlobalDragOver(event) {
+document.addEventListener('dragover', function(e) {
     if (!draggedItem) return;
     
-    // Find the closest drop zone or folder drop zone
-    const dropZone = event.target.closest('.drop-zone');
-    const folderDropZone = event.target.closest('.folder-drop-zone');
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     
-    if (dropZone || folderDropZone) {
-        lastValidDropZone = dropZone || folderDropZone;
+    const dropZone = e.target.closest('.drop-zone');
+    const folderDropZone = e.target.closest('.folder-drop-zone');
+    const folderItem = e.target.closest('.folder-item');
+    
+    // Clear previous active states
+    document.querySelectorAll('.drop-zone.active, .folder-drop-zone.active, .folder-item.drag-hover').forEach(el => {
+        el.classList.remove('active', 'drag-hover');
+    });
+    
+    if (dropZone) {
+        // Position-based drop
+        dropZone.classList.add('active');
+        currentDropZone = dropZone;
+        
+        // Move placeholder to this position
+        if (dragPlaceholder && dragPlaceholder.parentNode) {
+            const nextSibling = dropZone.nextElementSibling;
+            if (nextSibling && !nextSibling.classList.contains('drag-placeholder')) {
+                dropZone.parentNode.insertBefore(dragPlaceholder, nextSibling);
+            } else if (!dropZone.nextElementSibling) {
+                dropZone.parentNode.appendChild(dragPlaceholder);
+            }
+        }
+    } else if (folderDropZone) {
+        // Folder nesting drop
+        folderDropZone.classList.add('active');
+        currentDropZone = folderDropZone;
+        
+        // Move placeholder to end of folder
+        if (dragPlaceholder && dragPlaceholder.parentNode) {
+            folderDropZone.parentNode.appendChild(dragPlaceholder);
+        }
+    } else if (folderItem && folderItem.dataset.itemId !== draggedItem) {
+        // Hover over folder for expansion
+        folderItem.classList.add('drag-hover');
+        
+        // Auto-expand folder after delay
+        if (folderExpandTimeout) {
+            clearTimeout(folderExpandTimeout);
+        }
+        
+        folderExpandTimeout = setTimeout(() => {
+            const folderId = folderItem.dataset.itemId;
+            const folder = data.folders.find(f => f.id === folderId);
+            if (folder && !folder.expanded) {
+                folder.expanded = true;
+                renderPromptList();
+            }
+        }, 800);
     }
-}
+});
 
-function handleDragOver(event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+document.addEventListener('drop', function(e) {
+    if (!draggedItem || !currentDropZone) return;
     
-    if (!draggedItem) return;
+    e.preventDefault();
+    e.stopPropagation();
     
-    const dropZone = event.currentTarget;
+    const isPositionDrop = currentDropZone.classList.contains('drop-zone');
+    const isFolderDrop = currentDropZone.classList.contains('folder-drop-zone');
     
-    if (dropZone.classList.contains('drop-zone')) {
-        // Clear other drop zones
-        document.querySelectorAll('.drop-zone.drag-over').forEach(el => {
-            if (el !== dropZone) el.classList.remove('drag-over');
-        });
-        dropZone.classList.add('drag-over');
-    } else if (dropZone.classList.contains('folder-drop-zone')) {
-        // Clear other folder drop zones
-        document.querySelectorAll('.folder-drop-zone.drag-over').forEach(el => {
-            if (el !== dropZone) el.classList.remove('drag-over');
-        });
-        dropZone.classList.add('drag-over');
+    if (isPositionDrop) {
+        handlePositionDrop(currentDropZone);
+    } else if (isFolderDrop) {
+        handleFolderDrop(currentDropZone);
     }
-}
+});
 
-function handleDragLeave(event) {
-    // Only remove drag-over if we're actually leaving the element
-    if (!event.currentTarget.contains(event.relatedTarget)) {
-        event.currentTarget.classList.remove('drag-over', 'drag-over-folder');
-    }
-}
-
-// Intelligent position calculation
-function calculateIntelligentPosition(dropZone, currentY) {
+// Handle position-based drops
+async function handlePositionDrop(dropZone) {
     const parentId = dropZone.dataset.parentId || null;
-    const basePosition = parseInt(dropZone.dataset.position);
-    
-    // Get all items in the container
-    const folders = data.folders.filter(f => f.parentId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
-    const prompts = data.prompts.filter(p => p.folderId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
-    const allItems = [...folders, ...prompts].sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    // Clamp position to valid range
-    const maxPosition = allItems.length;
-    const clampedPosition = Math.max(0, Math.min(basePosition, maxPosition));
-    
-    return clampedPosition;
-}
-
-// Handle drops for positioning between items with intelligent clamping
-async function handlePositionDrop(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (!draggedItem || !draggedType) return;
-    
-    const dropZone = event.currentTarget;
-    const parentId = dropZone.dataset.parentId || null;
-    const targetPosition = calculateIntelligentPosition(dropZone, event.clientY);
-    
-    dropZone.classList.remove('drag-over');
+    const position = parseInt(dropZone.dataset.position);
     
     const result = await apiCall('/api/items/move', {
         method: 'POST',
@@ -1818,7 +1809,7 @@ async function handlePositionDrop(event) {
             type: draggedType,
             itemId: draggedItem,
             targetContainer: parentId,
-            targetPosition: targetPosition
+            targetPosition: position
         })
     });
     
@@ -1828,26 +1819,17 @@ async function handlePositionDrop(event) {
     }
 }
 
-// Handle drops for moving into folders (always last position)
-async function handleFolderDrop(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (!draggedItem || !draggedType) return;
-    
-    const dropZone = event.currentTarget;
+// Handle folder nesting drops
+async function handleFolderDrop(dropZone) {
     const parentId = dropZone.dataset.parentId || null;
     
-    dropZone.classList.remove('drag-over');
-    
-    // Always place at the end when dropping into folder zone
     const result = await apiCall('/api/items/move', {
         method: 'POST',
         body: JSON.stringify({
             type: draggedType,
             itemId: draggedItem,
             targetContainer: parentId,
-            targetPosition: null // null means "put at end"
+            targetPosition: null // null means end of container
         })
     });
     
