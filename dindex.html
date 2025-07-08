@@ -213,7 +213,7 @@ body {
   background-color: #e2e8f0;
 }
 
-.folder-item.drag-over {
+.folder-item.drag-over-folder {
   background-color: #dbeafe !important;
   border: 2px dashed #3b82f6 !important;
   border-radius: 6px;
@@ -238,7 +238,7 @@ body {
   cursor: grabbing;
 }
 
-/* Folder count badge - positioned between name and controls */
+/* Folder count badge */
 .folder-count {
   font-size: 11px;
   color: #64748b;
@@ -249,47 +249,6 @@ body {
   margin-right: 8px;
   min-width: 20px;
   text-align: center;
-}
-
-/* Folder Controls - only show move out arrow for nested folders */
-.folder-controls {
-  display: flex;
-  flex-direction: column;
-  opacity: 0;
-  margin-right: 8px;
-  transition: opacity 0.2s;
-  gap: 1px;
-}
-
-.folder-item:hover .folder-controls {
-  opacity: 1;
-}
-
-.folder-move-btn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-size: 10px;
-  line-height: 1;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 14px;
-}
-
-.folder-move-btn:hover {
-  background-color: #f1f5f9;
-  color: #475569;
-}
-
-/* Special styling for the "move out" button */
-.folder-move-btn i.fa-arrow-left {
-  font-size: 8px;
 }
 
 /* Folder children indentation */
@@ -308,29 +267,48 @@ body {
   transition: background-color 0.2s;
 }
 
-.root-prompts.drag-over {
-  background-color: #f0f9ff;
-  border: 2px dashed #0ea5e9;
-}
-
-/* Drop zones for reordering */
+/* Enhanced drop zones for better positioning */
 .drop-zone {
   height: 4px;
-  margin: 2px 0;
+  margin: 1px 0;
   border-radius: 2px;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   opacity: 0;
+  position: relative;
 }
 
-.drop-zone.active {
+.drop-zone.drag-over {
   background-color: #3b82f6;
   opacity: 1;
-  height: 8px;
+  height: 24px;
+  margin: 8px 0;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-/* Improve drag feedback */
-.folder-list {
+.drop-zone.drag-over::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #3b82f6;
+  transform: translateY(-50%);
+}
+
+/* Folder drop zone styling */
+.folder-drop-zone {
   min-height: 20px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  margin: 2px 0;
+}
+
+.folder-drop-zone.drag-over {
+  background-color: #f0f9ff;
+  border: 2px dashed #0ea5e9;
+  min-height: 40px;
+  margin: 8px 0;
 }
 
 /* Main Content Styles */
@@ -944,18 +922,10 @@ body {
 /* Enhanced drag states */
 .prompt-item.dragging,
 .folder-item.dragging {
-  opacity: 0.5;
-  transform: rotate(2deg);
+  opacity: 0.6;
+  transform: rotate(1deg) scale(1.02);
   z-index: 1000;
-}
-
-.drag-over {
-  background-color: #dbeafe !important;
-  border: 2px dashed #3b82f6 !important;
-}
-
-.dragging {
-  opacity: 0.5;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* Utility Classes */
@@ -1259,10 +1229,9 @@ let selectedPrompt = null;
 let selectedFolder = null;
 let searchQuery = '';
 let activeTab = 'repository';
-let draggedPrompt = null;
-let draggedFolder = null;
-let deleteTarget = null;
+let draggedItem = null;
 let draggedType = null; // 'prompt' or 'folder'
+let deleteTarget = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -1390,65 +1359,72 @@ function renderPromptList() {
     const container = document.getElementById('promptList');
     const filteredPrompts = getFilteredPrompts();
     
-    // Get root level prompts and sort by order
-    const rootPrompts = filteredPrompts.filter(p => !p.folderId).sort((a, b) => (a.order || 0) - (b.order || 0));
-    
     let html = '';
     
-    // Add root prompts drop zone
-    html += '<div class="root-prompts" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">';
-    rootPrompts.forEach((prompt, index) => {
-        html += renderDropZone('root', index);
-        html += renderPromptItem(prompt);
-    });
-    html += renderDropZone('root', rootPrompts.length);
-    html += '</div>';
-    
-    // Add folders hierarchy
-    const folderHierarchy = buildFolderHierarchy();
-    html += renderFolderHierarchy(folderHierarchy, filteredPrompts);
+    // Render root level items (folders and prompts mixed)
+    html += renderContainer(null, filteredPrompts);
     
     container.innerHTML = html;
 }
 
-function renderFolderHierarchy(folders, filteredPrompts, level = 0) {
+function renderContainer(parentId, filteredPrompts, level = 0) {
     let html = '';
     
-    folders.forEach((folder, folderIndex) => {
-        html += renderDropZone('folder', folderIndex, folder.parentId);
-        html += renderFolderItem(folder, filteredPrompts, level);
-        
-        if (folder.expanded) {
-            // Render child folders
-            if (folder.children.length > 0) {
-                html += '<div class="folder-children">';
-                html += renderFolderHierarchy(folder.children, filteredPrompts, level + 1);
-                html += '</div>';
-            }
+    // Get folders and prompts for this container
+    const folders = data.folders.filter(f => f.parentId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const prompts = filteredPrompts.filter(p => p.folderId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // Create combined list of items with their types and orders
+    const allItems = [
+        ...folders.map(f => ({ ...f, type: 'folder' })),
+        ...prompts.map(p => ({ ...p, type: 'prompt' }))
+    ].sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // Add drop zone at the beginning
+    html += renderDropZone(parentId, 0);
+    
+    // Render each item
+    allItems.forEach((item, index) => {
+        if (item.type === 'folder') {
+            html += renderFolderItem(item, filteredPrompts, level);
             
-            // Render prompts in this folder
-            const directPrompts = filteredPrompts.filter(p => p.folderId === folder.id).sort((a, b) => (a.order || 0) - (b.order || 0));
-            if (directPrompts.length > 0) {
+            // Render folder contents if expanded
+            if (item.expanded) {
                 html += '<div class="folder-children">';
-                directPrompts.forEach((prompt, promptIndex) => {
-                    html += renderDropZone('prompt', promptIndex, folder.id);
-                    html += renderPromptItem(prompt);
-                });
-                html += renderDropZone('prompt', directPrompts.length, folder.id);
+                html += renderContainer(item.id, filteredPrompts, level + 1);
                 html += '</div>';
             }
+        } else {
+            html += renderPromptItem(item);
         }
+        
+        // Add drop zone after each item
+        html += renderDropZone(parentId, index + 1);
     });
     
-    if (folders.length > 0) {
-        html += renderDropZone('folder', folders.length, folders[0]?.parentId);
+    // Add folder drop zone if there are folders at this level
+    if (folders.length > 0 || level === 0) {
+        html += renderFolderDropZone(parentId);
     }
     
     return html;
 }
 
-function renderDropZone(type, index, parentId = null) {
-    return `<div class="drop-zone" data-type="${type}" data-index="${index}" data-parent-id="${parentId || ''}" ondrop="handleReorderDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"></div>`;
+function renderDropZone(parentId, position) {
+    return `<div class="drop-zone" 
+                 data-parent-id="${parentId || ''}" 
+                 data-position="${position}"
+                 ondrop="handlePositionDrop(event)" 
+                 ondragover="handleDragOver(event)" 
+                 ondragleave="handleDragLeave(event)"></div>`;
+}
+
+function renderFolderDropZone(parentId) {
+    return `<div class="folder-drop-zone" 
+                 data-parent-id="${parentId || ''}"
+                 ondrop="handleFolderDrop(event)" 
+                 ondragover="handleDragOver(event)" 
+                 ondragleave="handleDragLeave(event)"></div>`;
 }
 
 function renderPromptItem(prompt) {
@@ -1457,8 +1433,9 @@ function renderPromptItem(prompt) {
     return `
         <div class="prompt-item ${isSelected ? 'selected' : ''}" 
              draggable="true"
-             data-prompt-id="${prompt.id}"
-             ondragstart="handleDragStart(event, 'prompt', '${prompt.id}')"
+             data-item-id="${prompt.id}"
+             data-item-type="prompt"
+             ondragstart="handleDragStart(event)"
              ondragend="handleDragEnd(event)"
              onclick="selectPrompt('${prompt.id}')">
             <i class="drag-handle fas fa-grip-vertical"></i>
@@ -1476,30 +1453,19 @@ function renderFolderItem(folder, filteredPrompts, level) {
     const icon = folder.expanded ? 'fa-folder-open' : 'fa-folder';
     const folderPrompts = getPromptsInFolder(folder.id, true, filteredPrompts);
     const promptCount = folderPrompts.length;
-    const canMoveOut = level > 0; // Can only move out if it's nested
     
     return `
         <div class="folder-item ${isSelected ? 'selected' : ''}"
              draggable="true"
-             data-folder-id="${folder.id}"
-             ondragstart="handleDragStart(event, 'folder', '${folder.id}')"
+             data-item-id="${folder.id}"
+             data-item-type="folder"
+             ondragstart="handleDragStart(event)"
              ondragend="handleDragEnd(event)"
-             ondrop="handleFolderDrop(event, '${folder.id}')"
-             ondragover="handleDragOver(event)"
-             ondragleave="handleDragLeave(event)"
              onclick="toggleFolder('${folder.id}')">
             <i class="drag-handle fas fa-grip-vertical"></i>
             <i class="fas ${icon}"></i>
             <span class="folder-name">${escapeHtml(folder.name)}</span>
             <span class="folder-count">${promptCount}</span>
-            ${canMoveOut ? `
-            <div class="folder-controls">
-                <button class="folder-move-btn" 
-                        onclick="event.stopPropagation(); moveFolderOut('${folder.id}')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-            </div>
-            ` : ''}
             <button class="delete-btn" onclick="event.stopPropagation(); confirmDeleteFolder('${folder.id}', '${escapeHtml(folder.name)}')">
                 <i class="fas fa-times"></i>
             </button>
@@ -1684,22 +1650,110 @@ function switchTab(tabName) {
     }
 }
 
-// Folder movement functions
-async function moveFolderOut(folderId) {
-    const folder = data.folders.find(f => f.id === folderId);
-    if (!folder || !folder.parentId) return;
+// Enhanced drag and drop functionality
+function handleDragStart(event) {
+    const element = event.currentTarget;
+    draggedItem = element.dataset.itemId;
+    draggedType = element.dataset.itemType;
     
-    const parentFolder = data.folders.find(f => f.id === folder.parentId);
-    const newParentId = parentFolder ? parentFolder.parentId : null;
+    element.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', `${draggedType}:${draggedItem}`);
+}
+
+function handleDragEnd(event) {
+    event.currentTarget.classList.remove('dragging');
     
-    const result = await apiCall(`/api/folders/${folderId}/move`, {
+    // Clean up all drag states
+    document.querySelectorAll('.drag-over, .drag-over-folder').forEach(el => {
+        el.classList.remove('drag-over', 'drag-over-folder');
+    });
+    
+    draggedItem = null;
+    draggedType = null;
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    
+    if (!draggedItem) return;
+    
+    const dropZone = event.currentTarget;
+    
+    if (dropZone.classList.contains('drop-zone')) {
+        dropZone.classList.add('drag-over');
+    } else if (dropZone.classList.contains('folder-drop-zone')) {
+        dropZone.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(event) {
+    // Only remove drag-over if we're actually leaving the element
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        event.currentTarget.classList.remove('drag-over', 'drag-over-folder');
+    }
+}
+
+// Handle drops for positioning between items
+async function handlePositionDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!draggedItem || !draggedType) return;
+    
+    const dropZone = event.currentTarget;
+    const parentId = dropZone.dataset.parentId || null;
+    const position = parseInt(dropZone.dataset.position);
+    
+    dropZone.classList.remove('drag-over');
+    
+    const result = await apiCall('/api/items/move', {
         method: 'POST',
-        body: JSON.stringify({ parentId: newParentId })
+        body: JSON.stringify({
+            type: draggedType,
+            itemId: draggedItem,
+            targetContainer: parentId,
+            targetPosition: position
+        })
     });
     
     if (result && result.success) {
         await loadData();
-        showToast('Folder moved out');
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
+    }
+}
+
+// Handle drops for moving into folders
+async function handleFolderDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!draggedItem || !draggedType) return;
+    
+    const dropZone = event.currentTarget;
+    const parentId = dropZone.dataset.parentId || null;
+    
+    dropZone.classList.remove('drag-over');
+    
+    // For folder drops, we want to add to the end of the container
+    const siblings = draggedType === 'folder' 
+        ? data.folders.filter(f => f.parentId === parentId)
+        : data.prompts.filter(p => p.folderId === parentId);
+    
+    const result = await apiCall('/api/items/move', {
+        method: 'POST',
+        body: JSON.stringify({
+            type: draggedType,
+            itemId: draggedItem,
+            targetContainer: parentId,
+            targetPosition: siblings.length
+        })
+    });
+    
+    if (result && result.success) {
+        await loadData();
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
     }
 }
 
@@ -1930,227 +1984,6 @@ async function restoreVersion(promptId, versionId) {
         showPromptDetails();
     }
 }
-
-// Enhanced drag and drop functionality
-function handleDragStart(event, type, id) {
-    draggedType = type;
-    if (type === 'prompt') {
-        draggedPrompt = id;
-    } else {
-        draggedFolder = id;
-    }
-    
-    event.target.classList.add('dragging');
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', `${type}:${id}`);
-}
-
-function handleDragOver(event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-}
-
-function handleDragLeave(event) {
-    // Only remove drag-over if we're actually leaving the element
-    if (!event.currentTarget.contains(event.relatedTarget)) {
-        event.currentTarget.classList.remove('drag-over');
-        event.currentTarget.classList.remove('active');
-    }
-}
-
-function handleDragEnd(event) {
-    event.target.classList.remove('dragging');
-    // Clean up any remaining drag-over classes
-    document.querySelectorAll('.drag-over, .active').forEach(el => {
-        el.classList.remove('drag-over', 'active');
-    });
-    draggedPrompt = null;
-    draggedFolder = null;
-    draggedType = null;
-}
-
-// Handle drops for moving items into folders
-async function handleFolderDrop(event, targetFolderId) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.classList.remove('drag-over');
-    
-    if (!draggedType) return;
-    
-    if (draggedType === 'folder' && draggedFolder) {
-        if (draggedFolder === targetFolderId) return;
-        
-        // Check for circular reference
-        function wouldCreateCycle(folderId, targetId) {
-            if (folderId === targetId) return true;
-            const children = data.folders.filter(f => f.parentId === targetId);
-            return children.some(child => wouldCreateCycle(folderId, child.id));
-        }
-        
-        if (wouldCreateCycle(draggedFolder, targetFolderId)) {
-            showToast('Cannot move folder into itself or its children');
-            return;
-        }
-        
-        const result = await apiCall(`/api/folders/${draggedFolder}/move`, {
-            method: 'POST',
-            body: JSON.stringify({ parentId: targetFolderId })
-        });
-        
-        if (result) {
-            await loadData();
-            showToast('Folder moved successfully');
-        }
-    } else if (draggedType === 'prompt' && draggedPrompt) {
-        const result = await apiCall(`/api/prompts/${draggedPrompt}/move`, {
-            method: 'POST',
-            body: JSON.stringify({ folderId: targetFolderId })
-        });
-        
-        if (result) {
-            await loadData();
-            showToast('Prompt moved successfully');
-        }
-    }
-}
-
-// Handle drops for reordering
-async function handleReorderDrop(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.classList.remove('drag-over', 'active');
-    
-    if (!draggedType) return;
-    
-    const dropZone = event.currentTarget;
-    const dropType = dropZone.dataset.type;
-    const dropIndex = parseInt(dropZone.dataset.index);
-    const dropParentId = dropZone.dataset.parentId || null;
-    
-    if (draggedType === 'prompt' && draggedPrompt) {
-        // Get all prompts in the same folder
-        const siblings = data.prompts.filter(p => p.folderId === dropParentId).sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        // Remove dragged prompt from siblings if it's in the same folder
-        const draggedPromptObj = data.prompts.find(p => p.id === draggedPrompt);
-        const filteredSiblings = siblings.filter(p => p.id !== draggedPrompt);
-        
-        // Insert at new position
-        filteredSiblings.splice(dropIndex, 0, draggedPromptObj);
-        
-        // Update orders and folder
-        const promptOrders = filteredSiblings.map((prompt, index) => ({
-            id: prompt.id,
-            order: index
-        }));
-        
-        // Move prompt to new folder if needed
-        if (draggedPromptObj.folderId !== dropParentId) {
-            await apiCall(`/api/prompts/${draggedPrompt}/move`, {
-                method: 'POST',
-                body: JSON.stringify({ folderId: dropParentId })
-            });
-        }
-        
-        // Update order
-        await apiCall('/api/prompts/reorder', {
-            method: 'POST',
-            body: JSON.stringify({ promptOrders })
-        });
-        
-        await loadData();
-        showToast('Prompt reordered successfully');
-        
-    } else if (draggedType === 'folder' && draggedFolder && dropType === 'folder') {
-        // Get all folders in the same parent
-        const siblings = data.folders.filter(f => f.parentId === dropParentId).sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        // Remove dragged folder from siblings if it's in the same parent
-        const draggedFolderObj = data.folders.find(f => f.id === draggedFolder);
-        const filteredSiblings = siblings.filter(f => f.id !== draggedFolder);
-        
-        // Insert at new position
-        filteredSiblings.splice(dropIndex, 0, draggedFolderObj);
-        
-        // Update orders and parent
-        const folderOrders = filteredSiblings.map((folder, index) => ({
-            id: folder.id,
-            order: index
-        }));
-        
-        // Move folder to new parent if needed
-        if (draggedFolderObj.parentId !== dropParentId) {
-            await apiCall(`/api/folders/${draggedFolder}/move`, {
-                method: 'POST',
-                body: JSON.stringify({ parentId: dropParentId })
-            });
-        }
-        
-        // Update order
-        await apiCall('/api/folders/reorder', {
-            method: 'POST',
-            body: JSON.stringify({ folderOrders })
-        });
-        
-        await loadData();
-        showToast('Folder reordered successfully');
-    }
-}
-
-// Handle general drops (for moving to root or folders)
-async function handleDrop(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.classList.remove('drag-over');
-    
-    if (!draggedType) return;
-    
-    // This handles dropping into root area
-    if (draggedType === 'prompt' && draggedPrompt) {
-        const result = await apiCall(`/api/prompts/${draggedPrompt}/move`, {
-            method: 'POST',
-            body: JSON.stringify({ folderId: null })
-        });
-        
-        if (result) {
-            await loadData();
-            showToast('Prompt moved to root');
-        }
-    } else if (draggedType === 'folder' && draggedFolder) {
-        const result = await apiCall(`/api/folders/${draggedFolder}/move`, {
-            method: 'POST',
-            body: JSON.stringify({ parentId: null })
-        });
-        
-        if (result) {
-            await loadData();
-            showToast('Folder moved to root');
-        }
-    }
-}
-
-// Enhanced drag over for drop zones
-document.addEventListener('dragover', function(event) {
-    if (!draggedType) return;
-    
-    const dropZone = event.target.closest('.drop-zone');
-    if (dropZone) {
-        event.preventDefault();
-        dropZone.classList.add('active');
-    }
-    
-    const folderItem = event.target.closest('.folder-item');
-    if (folderItem) {
-        event.preventDefault();
-        folderItem.classList.add('drag-over');
-    }
-    
-    const rootPrompts = event.target.closest('.root-prompts');
-    if (rootPrompts) {
-        event.preventDefault();
-        rootPrompts.classList.add('drag-over');
-    }
-});
 
 // Modal functions
 function showModal(modalId) {
