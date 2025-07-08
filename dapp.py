@@ -70,6 +70,9 @@ def reorder_items_in_container(items, moved_item_id, new_position):
     if not moved_item:
         return items
     
+    # Clamp position to valid range
+    new_position = max(0, min(new_position, len(filtered_items)))
+    
     # Insert at new position
     filtered_items.insert(new_position, moved_item)
     
@@ -250,7 +253,7 @@ def delete_folder(folder_id):
 
 @app.route('/api/items/move', methods=['POST'])
 def move_item():
-    """Move an item (prompt or folder) to a new position"""
+    """Move an item (prompt or folder) to a new position with intelligent positioning"""
     data = load_data()
     move_data = request.json
     
@@ -273,9 +276,20 @@ def move_item():
         # Update folder
         prompt['folderId'] = target_container
         
-        # Reorder prompts in the target container
+        # Get all items in the target container (folders + prompts)
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
         container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
-        reordered_prompts = reorder_items_in_container(container_prompts, item_id, target_position)
+        all_container_items = container_folders + container_prompts
+        
+        # If no position specified, put at end
+        if target_position is None:
+            target_position = len(all_container_items)
+        
+        # Clamp position to valid range
+        target_position = max(0, min(target_position, len(all_container_items)))
+        
+        # Reorder prompts in the target container
+        reordered_prompts = reorder_items_in_container(container_prompts, item_id, target_position - len(container_folders))
         
         # Update the main prompts list
         for i, p in enumerate(data['prompts']):
@@ -314,9 +328,20 @@ def move_item():
         # Update parent
         folder['parentId'] = target_container
         
-        # Reorder folders in the target container
+        # Get all items in the target container
         container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
-        reordered_folders = reorder_items_in_container(container_folders, item_id, target_position)
+        container_prompts = [p for p in data['prompts'] if p.get('folderId') == target_container]
+        all_container_items = container_folders + container_prompts
+        
+        # If no position specified, put at end
+        if target_position is None:
+            target_position = len(all_container_items)
+        
+        # Clamp position to valid range
+        target_position = max(0, min(target_position, len(all_container_items)))
+        
+        # Reorder folders in the target container
+        reordered_folders = reorder_items_in_container(container_folders, item_id, min(target_position, len(container_folders)))
         
         # Update the main folders list
         for i, f in enumerate(data['folders']):
@@ -331,5 +356,4 @@ def move_item():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
 
