@@ -120,7 +120,8 @@ body {
   min-height: 20px;
 }
 
-.prompt-item {
+/* Enhanced Drag and Drop Styles */
+.prompt-item, .folder-item {
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -129,25 +130,25 @@ body {
   margin-bottom: 2px;
   transition: all 0.2s ease;
   position: relative;
+  user-select: none;
+  border: 2px solid transparent;
 }
 
-.prompt-item:hover {
+.prompt-item:hover, .folder-item:hover {
   background-color: #f1f5f9;
 }
 
-.prompt-item.selected {
+.prompt-item.selected, .folder-item.selected {
   background-color: #e2e8f0;
 }
 
-.prompt-item i,
-.folder-item i {
+.prompt-item i, .folder-item i {
   margin-right: 8px;
   font-size: 14px;
   color: #64748b;
 }
 
-.prompt-name,
-.folder-name {
+.prompt-name, .folder-name {
   flex: 1;
   font-size: 14px;
   white-space: nowrap;
@@ -155,8 +156,7 @@ body {
   text-overflow: ellipsis;
 }
 
-.version-badge,
-.usage-badge {
+.version-badge, .usage-badge {
   font-size: 11px;
   color: #64748b;
   background-color: #f1f5f9;
@@ -192,35 +192,7 @@ body {
   color: #dc2626;
 }
 
-/* Folder item layout adjustments */
-.folder-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-bottom: 2px;
-  transition: all 0.2s ease;
-  position: relative;
-  user-select: none;
-}
-
-.folder-item:hover {
-  background-color: #f1f5f9;
-}
-
-.folder-item.selected {
-  background-color: #e2e8f0;
-}
-
-.folder-item.drag-over-folder {
-  background-color: #dbeafe !important;
-  border: 2px dashed #3b82f6 !important;
-  border-radius: 6px;
-  transform: scale(1.02);
-}
-
-/* Drag handle for folders and prompts */
+/* Drag handle */
 .drag-handle {
   opacity: 0;
   margin-right: 8px;
@@ -260,132 +232,103 @@ body {
   margin-top: 4px;
 }
 
-/* Root prompts drop zone */
-.root-prompts {
-  min-height: 20px;
-  padding: 4px 0;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-/* Enhanced drop zones for real-time feedback */
+/* Enhanced Drop Zones */
 .drop-zone {
-  height: 2px;
-  margin: 1px 0;
-  border-radius: 1px;
-  transition: all 0.15s ease;
+  height: 4px;
+  margin: 2px 0;
+  border-radius: 2px;
+  transition: all 0.2s ease;
   opacity: 0;
-  position: relative;
   background-color: transparent;
+  position: relative;
 }
 
-.drop-zone.active {
-  background-color: #3b82f6;
+.drop-zone.drag-over {
   opacity: 1;
-  height: 24px;
+  height: 32px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px dashed #3b82f6;
   margin: 8px 0;
-  box-shadow: 
-    0 0 0 1px rgba(59, 130, 246, 0.3),
-    0 2px 8px rgba(59, 130, 246, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
-.drop-zone.active::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background-color: #3b82f6;
-  transform: translateY(-50%);
-  border-radius: 1px;
-}
-
-.drop-zone.active::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 4px;
-  width: 8px;
-  height: 8px;
-  background-color: #3b82f6;
-  border-radius: 50%;
-  transform: translateY(-50%);
+.drop-zone.drag-over::before {
+  content: 'Drop here';
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Folder drop zone for nesting */
 .folder-drop-zone {
   min-height: 4px;
   border-radius: 6px;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   margin: 2px 0;
   opacity: 0;
-  position: relative;
+  background-color: transparent;
 }
 
-.folder-drop-zone.active {
+.folder-drop-zone.drag-over {
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border: 2px dashed #0ea5e9;
-  min-height: 32px;
-  margin: 6px 0;
+  min-height: 40px;
+  margin: 8px 0;
   opacity: 1;
-  box-shadow: 
-    0 0 0 1px rgba(14, 165, 233, 0.2),
-    0 2px 8px rgba(14, 165, 233, 0.15);
-}
-
-.folder-drop-zone.active::before {
-  content: 'Drop to add to folder';
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+}
+
+.folder-drop-zone.drag-over::before {
+  content: 'Drop to add to folder';
   color: #0ea5e9;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* Real-time drag feedback */
-.drag-placeholder {
-  background-color: #f1f5f9;
-  border: 2px dashed #cbd5e1;
-  border-radius: 6px;
-  height: 40px;
-  margin: 2px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #64748b;
-  font-size: 12px;
-  font-style: italic;
-  opacity: 0.8;
-}
-
-.drag-ghost {
-  opacity: 0.3;
-  transform: scale(0.95);
-  pointer-events: none;
-}
-
-/* Enhanced drag states */
+/* Drag states */
 .prompt-item.dragging,
 .folder-item.dragging {
-  opacity: 0.8;
-  transform: rotate(1deg) scale(1.02);
+  opacity: 0.6;
+  transform: scale(1.02);
   z-index: 1000;
-  box-shadow: 
-    0 8px 25px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #3b82f6;
 }
 
-/* Folder expansion on drag over */
 .folder-item.drag-hover {
   background-color: #f0f9ff !important;
-  border-left: 3px solid #3b82f6;
+  border-left: 4px solid #3b82f6;
+  transform: translateX(2px);
+}
+
+/* Drag preview */
+.drag-preview {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  pointer-events: none;
+  font-size: 14px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Main Content Styles */
@@ -1055,14 +998,14 @@ body {
     font-size: 12px;
   }
 
-  .drop-zone.active {
-    height: 20px;
+  .drop-zone.drag-over {
+    height: 28px;
     margin: 6px 0;
   }
 
-  .folder-drop-zone.active {
-    min-height: 28px;
-    margin: 4px 0;
+  .folder-drop-zone.drag-over {
+    min-height: 36px;
+    margin: 6px 0;
   }
 }
     </style>
@@ -1071,227 +1014,223 @@ body {
   <div class="top-bar">
     <div class="tiny">Prompt Repository</div>
   </div>
-
-    <div class="app-container" style="padding-top: 40px;">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <div class="app-title">
-                    <span>Prompt assets</span>
-                </div>
-                <div class="action-buttons">
-                    <button class="btn btn-outline" onclick="showAddPromptModal()">
-                        <i class="fas fa-plus"></i> Prompt
-                    </button>
-                    <button class="btn btn-outline" onclick="showAddFolderModal()">
-                        <i class="fas fa-folder-plus"></i> Folder
-                    </button>
-                </div>
-                <div class="search-container">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="searchInput" placeholder="Search prompts..." oninput="handleSearch()">
-                </div>
+  
+  <div class="app-container" style="padding-top: 40px;">
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="app-title">
+                <span>Prompt assets</span>
             </div>
-            
-            <div class="sidebar-content">
-                <div class="sidebar-group">
-                    <div class="sidebar-group-label">Repository</div>
-                    <div id="promptList" class="prompt-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="main-content">
-            <header class="main-header">
-                <button class="sidebar-toggle" onclick="toggleSidebar()">
-                    <i class="fas fa-bars"></i>
+            <div class="action-buttons">
+                <button class="btn btn-outline" onclick="showAddPromptModal()">
+                    <i class="fas fa-plus"></i> Prompt
                 </button>
-                <div class="header-title">
-                    <i class="fas fa-database"></i>
-                    <span>Prompt Repository</span>
-                </div>
-            </header>
-
-            <div class="content-area">
-                <div class="tabs">
-                    <div class="tab-list">
-                        <button class="tab-trigger active" data-tab="repository" onclick="switchTab('repository')">
-                            Repository
-                        </button>
-                        <button class="tab-trigger" data-tab="most-used" onclick="switchTab('most-used')">
-                            Most used
-                        </button>
-                    </div>
-
-                    <div id="repository-tab" class="tab-content active">
-                        <div id="promptDetails" class="prompt-details hidden">
-                            <div class="prompt-header">
-                                <div class="prompt-title-section">
-                                    <h2 id="promptTitle"></h2>
-                                    <div id="promptBadges" class="prompt-badges"></div>
-                                </div>
-                                <div class="prompt-actions">
-                                    <button id="historyBtn" class="btn btn-outline hidden" onclick="showVersionHistory()">
-                                        <i class="fas fa-history"></i> History
-                                    </button>
-                                    <button class="btn btn-outline" onclick="editPrompt()">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <button class="btn btn-outline" onclick="copyPrompt()">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                    <button class="btn btn-outline" onclick="deleteCurrentPrompt()">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="prompt-content">
-                                <pre id="promptText"></pre>
-                                <button class="prompt-copy-btn" onclick="copyPrompt()" title="Copy prompt">
-                                  <i class="fas fa-copy"></i>
-                              </button>
-                            </div>
-                        </div>
-
-                        <div id="folderDetails" class="folder-details hidden">
-                            <h2 id="folderTitle"></h2>
-                            <div id="folderPrompts" class="folder-prompts"></div>
-                        </div>
-
-                        <div id="emptyState" class="empty-state">
-                            <i class="fas fa-database empty-icon"></i>
-                            <p>Select a prompt or folder to view its contents</p>
-                        </div>
-                    </div>
-
-                    <div id="most-used-tab" class="tab-content">
-                        <div class="most-used-content">
-                            <h2>Most used prompts</h2>
-                            <div id="mostUsedList" class="most-used-list"></div>
-                            <div id="noUsageState" class="empty-state">
-                                <i class="fas fa-copy empty-icon"></i>
-                                <p>No prompts have been copied yet</p>
-                                <p class="empty-subtitle">Start copying prompts to see usage statistics</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <button class="btn btn-outline" onclick="showAddFolderModal()">
+                    <i class="fas fa-folder-plus"></i> Folder
+                </button>
+            </div>
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search prompts..." oninput="handleSearch()">
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="sidebar-group">
+                <div class="sidebar-group-label">Repository</div>
+                <div id="promptList" class="prompt-list"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
-    <div id="addPromptModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Add New Prompt</h3>
-                <button class="modal-close" onclick="closeModal('addPromptModal')">&times;</button>
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="main-header">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="header-title">
+                <i class="fas fa-database"></i>
+                <span>Prompt Repository</span>
             </div>
-            <form onsubmit="addPrompt(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="promptName">Prompt Name</label>
-                        <input type="text" id="promptName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="promptTextArea">Prompt Text</label>
-                        <textarea id="promptTextArea" rows="6" required></textarea>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('addPromptModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save Prompt
+        </header>
+        <div class="content-area">
+            <div class="tabs">
+                <div class="tab-list">
+                    <button class="tab-trigger active" data-tab="repository" onclick="switchTab('repository')">
+                        Repository
+                    </button>
+                    <button class="tab-trigger" data-tab="most-used" onclick="switchTab('most-used')">
+                        Most used
                     </button>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="addFolderModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Add New Folder</h3>
-                <button class="modal-close" onclick="closeModal('addFolderModal')">&times;</button>
-            </div>
-            <form onsubmit="addFolder(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="folderName">Folder Name</label>
-                        <input type="text" id="folderName" required>
+                <div id="repository-tab" class="tab-content active">
+                    <div id="promptDetails" class="prompt-details hidden">
+                        <div class="prompt-header">
+                            <div class="prompt-title-section">
+                                <h2 id="promptTitle"></h2>
+                                <div id="promptBadges" class="prompt-badges"></div>
+                            </div>
+                            <div class="prompt-actions">
+                                <button id="historyBtn" class="btn btn-outline hidden" onclick="showVersionHistory()">
+                                    <i class="fas fa-history"></i> History
+                                </button>
+                                <button class="btn btn-outline" onclick="editPrompt()">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn btn-outline" onclick="copyPrompt()">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <button class="btn btn-outline" onclick="deleteCurrentPrompt()">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                        <div class="prompt-content">
+                            <pre id="promptText"></pre>
+                            <button class="prompt-copy-btn" onclick="copyPrompt()" title="Copy prompt">
+                              <i class="fas fa-copy"></i>
+                          </button>
+                        </div>
+                    </div>
+                    <div id="folderDetails" class="folder-details hidden">
+                        <h2 id="folderTitle"></h2>
+                        <div id="folderPrompts" class="folder-prompts"></div>
+                    </div>
+                    <div id="emptyState" class="empty-state">
+                        <i class="fas fa-database empty-icon"></i>
+                        <p>Select a prompt or folder to view its contents</p>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('addFolderModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Create Folder
-                    </button>
+                <div id="most-used-tab" class="tab-content">
+                    <div class="most-used-content">
+                        <h2>Most used prompts</h2>
+                        <div id="mostUsedList" class="most-used-list"></div>
+                        <div id="noUsageState" class="empty-state">
+                            <i class="fas fa-copy empty-icon"></i>
+                            <p>No prompts have been copied yet</p>
+                            <p class="empty-subtitle">Start copying prompts to see usage statistics</p>
+                        </div>
+                    </div>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
+</div>
 
-    <div id="editPromptModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Prompt</h3>
-                <button class="modal-close" onclick="closeModal('editPromptModal')">&times;</button>
-            </div>
+<!-- Modals -->
+<div id="addPromptModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Prompt</h3>
+            <button class="modal-close" onclick="closeModal('addPromptModal')">&times;</button>
+        </div>
+        <form onsubmit="addPrompt(event)">
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="editPromptName">Prompt Name</label>
-                    <input type="text" id="editPromptName">
+                    <label for="promptName">Prompt Name</label>
+                    <input type="text" id="promptName" required>
                 </div>
                 <div class="form-group">
-                    <label for="editPromptText">Prompt Text</label>
-                    <textarea id="editPromptText" rows="6"></textarea>
+                    <label for="promptTextArea">Prompt Text</label>
+                    <textarea id="promptTextArea" rows="6" required></textarea>
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeModal('editPromptModal')">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-                <button type="button" class="btn btn-primary" onclick="saveEdit()">
-                    <i class="fas fa-save"></i> Save Changes
+                <button type="button" class="btn btn-outline" onclick="closeModal('addPromptModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Prompt
                 </button>
             </div>
-        </div>
+        </form>
     </div>
+</div>
 
-    <div id="deleteModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Confirm Deletion</h3>
-                <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
-            </div>
+<div id="addFolderModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Folder</h3>
+            <button class="modal-close" onclick="closeModal('addFolderModal')">&times;</button>
+        </div>
+        <form onsubmit="addFolder(event)">
             <div class="modal-body">
-                <p id="deleteMessage"></p>
+                <div class="form-group">
+                    <label for="folderName">Folder Name</label>
+                    <input type="text" id="folderName" required>
+                </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
-                    <i class="fas fa-trash"></i> Delete
+                <button type="button" class="btn btn-outline" onclick="closeModal('addFolderModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Folder
                 </button>
             </div>
+        </form>
+    </div>
+</div>
+
+<div id="editPromptModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Prompt</h3>
+            <button class="modal-close" onclick="closeModal('editPromptModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="editPromptName">Prompt Name</label>
+                <input type="text" id="editPromptName">
+            </div>
+            <div class="form-group">
+                <label for="editPromptText">Prompt Text</label>
+                <textarea id="editPromptText" rows="6"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('editPromptModal')">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveEdit()">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
         </div>
     </div>
+</div>
 
-    <div id="versionHistoryModal" class="modal modal-large">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="versionHistoryTitle">Version History</h3>
-                <button class="modal-close" onclick="closeModal('versionHistoryModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="versionsList" class="versions-list"></div>
-            </div>
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="deleteMessage"></p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                <i class="fas fa-trash"></i> Delete
+            </button>
         </div>
     </div>
+</div>
 
-    <div id="toast" class="toast"></div>
+<div id="versionHistoryModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="versionHistoryTitle">Version History</h3>
+            <button class="modal-close" onclick="closeModal('versionHistoryModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="versionsList" class="versions-list"></div>
+        </div>
+    </div>
+</div>
 
-    <script>
+<div id="toast" class="toast"></div>
+
+<script>
 // Global state
 let data = { prompts: [], folders: [] };
 let selectedPrompt = null;
@@ -1301,15 +1240,22 @@ let activeTab = 'repository';
 let draggedItem = null;
 let draggedType = null;
 let deleteTarget = null;
-let dragPlaceholder = null;
-let currentDropZone = null;
 let folderExpandTimeout = null;
+let dragPreview = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     loadData();
     setupEventListeners();
+    createDragPreview();
 });
+
+// Create drag preview element
+function createDragPreview() {
+    dragPreview = document.createElement('div');
+    dragPreview.className = 'drag-preview';
+    document.body.appendChild(dragPreview);
+}
 
 // API calls
 async function apiCall(url, options = {}) {
@@ -1366,13 +1312,10 @@ function handleSearch() {
 
 function getFilteredPrompts() {
     if (!searchQuery) return data.prompts;
-
     const nameMatches = data.prompts.filter(prompt => 
         prompt.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
     if (nameMatches.length > 0) return nameMatches;
-
     return data.prompts.filter(prompt => 
         prompt.text.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -1401,6 +1344,9 @@ function renderPromptList() {
     let html = '';
     html += renderContainer(null, filteredPrompts);
     container.innerHTML = html;
+    
+    // Setup drag and drop after rendering
+    setupDragAndDrop();
 }
 
 function renderContainer(parentId, filteredPrompts, level = 0) {
@@ -1540,6 +1486,243 @@ function renderMostUsed() {
     container.innerHTML = html;
 }
 
+// Enhanced Drag and Drop Implementation
+function setupDragAndDrop() {
+    const draggableItems = document.querySelectorAll('.prompt-item[draggable="true"], .folder-item[draggable="true"]');
+    const dropZones = document.querySelectorAll('.drop-zone, .folder-drop-zone');
+    
+    // Setup draggable items
+    draggableItems.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+    });
+    
+    // Setup drop zones
+    dropZones.forEach(zone => {
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('dragenter', handleDragEnter);
+        zone.addEventListener('dragleave', handleDragLeave);
+        zone.addEventListener('drop', handleDrop);
+    });
+    
+    // Setup folder hover for expansion
+    const folderItems = document.querySelectorAll('.folder-item');
+    folderItems.forEach(folder => {
+        folder.addEventListener('dragover', handleFolderDragOver);
+        folder.addEventListener('dragleave', handleFolderDragLeave);
+    });
+}
+
+function handleDragStart(e) {
+    const item = e.currentTarget;
+    draggedItem = item.dataset.itemId;
+    draggedType = item.dataset.itemType;
+    
+    // Add dragging class
+    item.classList.add('dragging');
+    
+    // Set drag data
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `${draggedType}:${draggedItem}`);
+    
+    // Update drag preview
+    const itemName = item.querySelector('.prompt-name, .folder-name').textContent;
+    dragPreview.textContent = `Moving ${draggedType}: ${itemName}`;
+    dragPreview.style.display = 'block';
+    
+    // Hide drag preview initially
+    dragPreview.style.left = '-1000px';
+    dragPreview.style.top = '-1000px';
+    
+    console.log(`Started dragging ${draggedType}: ${draggedItem}`);
+}
+
+function handleDragEnd(e) {
+    const item = e.currentTarget;
+    
+    // Remove dragging class
+    item.classList.remove('dragging');
+    
+    // Hide drag preview
+    dragPreview.style.display = 'none';
+    
+    // Clear all active states
+    document.querySelectorAll('.drop-zone.drag-over, .folder-drop-zone.drag-over, .folder-item.drag-hover').forEach(el => {
+        el.classList.remove('drag-over', 'drag-hover');
+    });
+    
+    // Clear timeouts
+    if (folderExpandTimeout) {
+        clearTimeout(folderExpandTimeout);
+        folderExpandTimeout = null;
+    }
+    
+    // Reset drag state
+    draggedItem = null;
+    draggedType = null;
+    
+    console.log('Drag ended');
+}
+
+function handleDragOver(e) {
+    if (!draggedItem) return;
+    
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Update drag preview position
+    dragPreview.style.left = (e.clientX + 10) + 'px';
+    dragPreview.style.top = (e.clientY + 10) + 'px';
+}
+
+function handleDragEnter(e) {
+    if (!draggedItem) return;
+    
+    e.preventDefault();
+    const dropZone = e.currentTarget;
+    
+    // Clear other active states
+    document.querySelectorAll('.drop-zone.drag-over, .folder-drop-zone.drag-over').forEach(el => {
+        if (el !== dropZone) {
+            el.classList.remove('drag-over');
+        }
+    });
+    
+    // Add active state
+    dropZone.classList.add('drag-over');
+    
+    console.log('Drag enter on drop zone');
+}
+
+function handleDragLeave(e) {
+    if (!draggedItem) return;
+    
+    const dropZone = e.currentTarget;
+    const rect = dropZone.getBoundingClientRect();
+    
+    // Only remove if actually leaving the zone
+    if (e.clientX < rect.left || e.clientX > rect.right || 
+        e.clientY < rect.top || e.clientY > rect.bottom) {
+        dropZone.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e) {
+    if (!draggedItem) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const dropZone = e.currentTarget;
+    dropZone.classList.remove('drag-over');
+    
+    const isPositionDrop = dropZone.classList.contains('drop-zone');
+    const isFolderDrop = dropZone.classList.contains('folder-drop-zone');
+    
+    if (isPositionDrop) {
+        handlePositionDrop(dropZone);
+    } else if (isFolderDrop) {
+        handleFolderDrop(dropZone);
+    }
+    
+    console.log('Drop handled');
+}
+
+function handleFolderDragOver(e) {
+    if (!draggedItem) return;
+    
+    const folderItem = e.currentTarget;
+    const folderId = folderItem.dataset.itemId;
+    
+    // Don't allow dropping on self
+    if (folderId === draggedItem) return;
+    
+    e.preventDefault();
+    
+    // Add hover state
+    folderItem.classList.add('drag-hover');
+    
+    // Auto-expand folder after delay
+    if (folderExpandTimeout) {
+        clearTimeout(folderExpandTimeout);
+    }
+    
+    folderExpandTimeout = setTimeout(() => {
+        const folder = data.folders.find(f => f.id === folderId);
+        if (folder && !folder.expanded) {
+            folder.expanded = true;
+            renderPromptList();
+        }
+    }, 1000);
+}
+
+function handleFolderDragLeave(e) {
+    if (!draggedItem) return;
+    
+    const folderItem = e.currentTarget;
+    const rect = folderItem.getBoundingClientRect();
+    
+    // Only remove if actually leaving the folder
+    if (e.clientX < rect.left || e.clientX > rect.right || 
+        e.clientY < rect.top || e.clientY > rect.bottom) {
+        folderItem.classList.remove('drag-hover');
+        
+        if (folderExpandTimeout) {
+            clearTimeout(folderExpandTimeout);
+            folderExpandTimeout = null;
+        }
+    }
+}
+
+// Handle position-based drops
+async function handlePositionDrop(dropZone) {
+    const parentId = dropZone.dataset.parentId || null;
+    const position = parseInt(dropZone.dataset.position);
+    
+    console.log(`Position drop: ${draggedType} ${draggedItem} to container ${parentId} at position ${position}`);
+    
+    const result = await apiCall('/api/items/move', {
+        method: 'POST',
+        body: JSON.stringify({
+            type: draggedType,
+            itemId: draggedItem,
+            targetContainer: parentId,
+            targetPosition: position
+        })
+    });
+    
+    if (result && result.success) {
+        await loadData();
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
+    } else {
+        showToast('Failed to move item');
+    }
+}
+
+// Handle folder nesting drops
+async function handleFolderDrop(dropZone) {
+    const parentId = dropZone.dataset.parentId || null;
+    
+    console.log(`Folder drop: ${draggedType} ${draggedItem} to folder ${parentId}`);
+    
+    const result = await apiCall('/api/items/move', {
+        method: 'POST',
+        body: JSON.stringify({
+            type: draggedType,
+            itemId: draggedItem,
+            targetContainer: parentId,
+            targetPosition: null // null means end of container
+        })
+    });
+    
+    if (result && result.success) {
+        await loadData();
+        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root'}`);
+    } else {
+        showToast('Failed to move item');
+    }
+}
+
 // Selection functions
 function selectPrompt(promptId) {
     selectedPrompt = data.prompts.find(p => p.id === promptId);
@@ -1626,12 +1809,12 @@ function showFolderDetails() {
     let html = '';
     folderPrompts.forEach(prompt => {
         const usageBadge = prompt.usageCount > 0 
-            ? `<span class="usage-badge">${prompt.usageCount}</span>` 
+            ? `<span class="usage-badge">${prompt.usageCount}</span>`
             : '';
         const versionBadge = prompt.versions && prompt.versions.length > 1 
-            ? `<span class="version-badge">v${prompt.currentVersion}</span>` 
+            ? `<span class="version-badge">v${prompt.currentVersion}</span>`
             : '';
-        
+            
         html += `
             <div class="folder-prompt-item" onclick="selectPrompt('${prompt.id}')">
                 <div class="folder-prompt-info">
@@ -1671,171 +1854,6 @@ function switchTab(tabName) {
     
     if (tabName === 'most-used') {
         renderMostUsed();
-    }
-}
-
-// Real-time drag and drop with live feedback
-document.addEventListener('dragstart', function(e) {
-    const item = e.target.closest('.prompt-item, .folder-item');
-    if (!item) return;
-    
-    draggedItem = item.dataset.itemId;
-    draggedType = item.dataset.itemType;
-    
-    // Create drag placeholder
-    dragPlaceholder = document.createElement('div');
-    dragPlaceholder.className = 'drag-placeholder';
-    dragPlaceholder.textContent = `Moving ${draggedType}...`;
-    
-    // Insert placeholder and hide original
-    item.parentNode.insertBefore(dragPlaceholder, item);
-    item.classList.add('drag-ghost');
-    
-    // Set drag data
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `${draggedType}:${draggedItem}`);
-});
-
-document.addEventListener('dragend', function(e) {
-    const item = e.target.closest('.prompt-item, .folder-item');
-    if (!item) return;
-    
-    // Clean up
-    if (dragPlaceholder && dragPlaceholder.parentNode) {
-        dragPlaceholder.parentNode.removeChild(dragPlaceholder);
-    }
-    
-    item.classList.remove('drag-ghost');
-    
-    // Clear all active states
-    document.querySelectorAll('.drop-zone.active, .folder-drop-zone.active, .folder-item.drag-hover').forEach(el => {
-        el.classList.remove('active', 'drag-hover');
-    });
-    
-    // Clear timeouts
-    if (folderExpandTimeout) {
-        clearTimeout(folderExpandTimeout);
-        folderExpandTimeout = null;
-    }
-    
-    draggedItem = null;
-    draggedType = null;
-    dragPlaceholder = null;
-    currentDropZone = null;
-});
-
-document.addEventListener('dragover', function(e) {
-    if (!draggedItem) return;
-    
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    
-    const dropZone = e.target.closest('.drop-zone');
-    const folderDropZone = e.target.closest('.folder-drop-zone');
-    const folderItem = e.target.closest('.folder-item');
-    
-    // Clear previous active states
-    document.querySelectorAll('.drop-zone.active, .folder-drop-zone.active, .folder-item.drag-hover').forEach(el => {
-        el.classList.remove('active', 'drag-hover');
-    });
-    
-    if (dropZone) {
-        // Position-based drop
-        dropZone.classList.add('active');
-        currentDropZone = dropZone;
-        
-        // Move placeholder to this position
-        if (dragPlaceholder && dragPlaceholder.parentNode) {
-            const nextSibling = dropZone.nextElementSibling;
-            if (nextSibling && !nextSibling.classList.contains('drag-placeholder')) {
-                dropZone.parentNode.insertBefore(dragPlaceholder, nextSibling);
-            } else if (!dropZone.nextElementSibling) {
-                dropZone.parentNode.appendChild(dragPlaceholder);
-            }
-        }
-    } else if (folderDropZone) {
-        // Folder nesting drop
-        folderDropZone.classList.add('active');
-        currentDropZone = folderDropZone;
-        
-        // Move placeholder to end of folder
-        if (dragPlaceholder && dragPlaceholder.parentNode) {
-            folderDropZone.parentNode.appendChild(dragPlaceholder);
-        }
-    } else if (folderItem && folderItem.dataset.itemId !== draggedItem) {
-        // Hover over folder for expansion
-        folderItem.classList.add('drag-hover');
-        
-        // Auto-expand folder after delay
-        if (folderExpandTimeout) {
-            clearTimeout(folderExpandTimeout);
-        }
-        
-        folderExpandTimeout = setTimeout(() => {
-            const folderId = folderItem.dataset.itemId;
-            const folder = data.folders.find(f => f.id === folderId);
-            if (folder && !folder.expanded) {
-                folder.expanded = true;
-                renderPromptList();
-            }
-        }, 800);
-    }
-});
-
-document.addEventListener('drop', function(e) {
-    if (!draggedItem || !currentDropZone) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const isPositionDrop = currentDropZone.classList.contains('drop-zone');
-    const isFolderDrop = currentDropZone.classList.contains('folder-drop-zone');
-    
-    if (isPositionDrop) {
-        handlePositionDrop(currentDropZone);
-    } else if (isFolderDrop) {
-        handleFolderDrop(currentDropZone);
-    }
-});
-
-// Handle position-based drops
-async function handlePositionDrop(dropZone) {
-    const parentId = dropZone.dataset.parentId || null;
-    const position = parseInt(dropZone.dataset.position);
-    
-    const result = await apiCall('/api/items/move', {
-        method: 'POST',
-        body: JSON.stringify({
-            type: draggedType,
-            itemId: draggedItem,
-            targetContainer: parentId,
-            targetPosition: position
-        })
-    });
-    
-    if (result && result.success) {
-        await loadData();
-        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved successfully`);
-    }
-}
-
-// Handle folder nesting drops
-async function handleFolderDrop(dropZone) {
-    const parentId = dropZone.dataset.parentId || null;
-    
-    const result = await apiCall('/api/items/move', {
-        method: 'POST',
-        body: JSON.stringify({
-            type: draggedType,
-            itemId: draggedItem,
-            targetContainer: parentId,
-            targetPosition: null // null means end of container
-        })
-    });
-    
-    if (result && result.success) {
-        await loadData();
-        showToast(`${draggedType === 'prompt' ? 'Prompt' : 'Folder'} moved to ${parentId ? 'folder' : 'root'}`);
     }
 }
 
@@ -2020,7 +2038,7 @@ function showVersionHistory() {
             `<button class="btn btn-outline" onclick="restoreVersion('${selectedPrompt.id}', '${version.id}')">
                 <i class="fas fa-undo"></i> Restore
             </button>` : '';
-        
+            
         html += `
             <div class="version-item">
                 <div class="version-header">
@@ -2107,6 +2125,6 @@ function toggleSidebar() {
 
 // Initialize empty state
 showEmptyState();
-    </script>
+</script>
 </body>
 </html>
