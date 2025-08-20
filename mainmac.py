@@ -224,4 +224,68 @@ if __name__ == '__main__':
         webview.start(gui='qt', http_server=True, debug=False, js_api=api)
     finally:
         shutdown()
+(function () {
+  const CHECK_EVERY_MS = 20000; // 20s periodic check
+  let baseDPR = window.devicePixelRatio || 1; // for optional physical-size mode
+  let lastDPR = baseDPR;
+
+  // Try to “nudge” rendering with no visual change
+  function forceRepaint() {
+    const root = document.documentElement;
+    root.style.willChange = 'transform';
+    root.style.transform = 'translateZ(0) scale(1.0001)';
+    requestAnimationFrame(() => {
+      root.style.transform = '';
+      root.style.willChange = '';
+    });
+
+    // If host allows it, also try a tiny window resize (often blocked; harmless if so)
+    try { window.resizeBy(1, 1); window.resizeBy(-1, -1); } catch (e) {}
+  }
+
+  // If you want the UI to keep the same physical size across monitors, uncomment:
+  function keepPhysicalSize() {
+    const current = window.devicePixelRatio || 1;
+    const scale = baseDPR / current;
+    const root = document.documentElement;
+    root.style.transformOrigin = '0 0';
+    root.style.transform = `scale(${scale})`;
+    root.style.width  = (100 / scale) + '%';
+    root.style.height = (100 / scale) + '%';
+  }
+
+  function onDPRChange() {
+    const dpr = window.devicePixelRatio || 1;
+    if (Math.abs(dpr - lastDPR) > 0.01) {
+      lastDPR = dpr;
+
+      // Option A (default): gentle repaint nudge
+      forceRepaint();
+
+      // Option B: hard refresh to guarantee re-rasterization
+      // location.reload();
+
+      // Option C: keep constant physical size across monitors
+      // keepPhysicalSize();
+    }
+  }
+
+  // React to resizes and explicit DPI media query changes
+  window.addEventListener('resize', onDPRChange, { passive: true });
+
+  let mq = window.matchMedia(`(resolution: ${lastDPR}dppx)`);
+  function remountMQ() {
+    try { mq.removeEventListener('change', onMQ); } catch (e) {}
+    mq = window.matchMedia(`(resolution: ${(window.devicePixelRatio || 1)}dppx)`);
+    try { mq.addEventListener('change', onMQ); } catch (e) {}
+  }
+  function onMQ() { onDPRChange(); remountMQ(); }
+  try { mq.addEventListener('change', onMQ); } catch (e) {}
+
+  // Periodic safety check (every 20s)
+  setInterval(onDPRChange, CHECK_EVERY_MS);
+
+  // Initial pass
+  onDPRChange();
+})();
 
