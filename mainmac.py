@@ -71,3 +71,157 @@ if __name__ == '__main__':
         webview.start(gui='qt')  # Fallback for both
     finally:
         shutdown()
+
+# --- Put near top with your imports ---
+from dataclasses import dataclass
+
+# Choose a strategy:
+#   "fit_to_monitor" -> keep window ~80% of active monitor's work area
+#   "keep_physical_size" -> keep similar physical size by counter-scaling with DPR
+RESIZE_STRATEGY = "fit_to_monitor"   # or "keep_physical_size"
+
+BASE_WIDTH, BASE_HEIGHT = 1180, 650   # your preferred base size at DPR=1
+SCREEN_COVERAGE = 0.80                # 80% of available work area for fit_to_monitor
+MIN_W, MIN_H = 900, 540               # safety minimums
+
+@dataclass
+class ScreenInfo:
+    dpr: float
+    avail_w: int
+    avail_h: int
+    outer_w: int
+    outer_h: int
+
+def compute_target_size(info: ScreenInfo):
+    if RESIZE_STRATEGY == "keep_physical_size":
+        # Keep physical size: at 2.0 DPR, halve CSS px so it "looks" same physical size
+        w = int(max(MIN_W, BASE_WIDTH  / max(info.dpr, 0.5)))
+        h = int(max(MIN_H, BASE_HEIGHT / max(info.dpr, 0.5)))
+    else:
+        # Fit to monitor work area by a fixed coverage %
+        w = int(max(MIN_W, info.avail_w * SCREEN_COVERAGE))
+        h = int(max(MIN_H, info.avail_h * SCREEN_COVERAGE))
+
+    # Do not exceed available area
+    w = min(w, info.avail_w)
+    h = min(h, info.avail_h)
+    return w, h
+
+class Api:
+    def __init__(self, window):
+        self.window = window
+        self._last_resize = 0
+
+    def update_resolution(self, payload=None):
+        """Called from JS periodically and on DPR/screen changes."""
+        try:
+            dpr = float(payload.get("dpr", 1.0))
+            avail_w = int(payload.get("availWidth", 0))
+            avail_h = int(payload.get("availHeight", 0))
+            outer_w = int(payload.get("outerWidth", 0))
+            outer_h = int(payload.get("outerHeight", 0))
+
+            target_w, target_h = compute_target_size(
+                ScreenInfo(dpr, avail_w, avail_h, outer_w, outer_h)
+            )
+
+            # Only resize if it materially differs (prevents flicker)
+            cur_w, cur_h = self.window.width, self.window.height
+            if abs(cur_w - target_w) > 2 or abs(cur_h - target_h) > 2:
+                webview.resize_window(self.window, target_w, target_h)
+
+        except Exception as e:
+            print("update_resolution error:", e)
+        return True
+DPR_AND_SCREEN_WATCHER = r"""
+(function () {
+  if (window.__screenWatcherInstalled) return;
+  window.__screenWatcherInstalled = true;
+
+  let last = {
+    dpr: window.devicePixelRatio || 1,
+    aw: screen.availWidth || window.innerWidth,
+    ah: screen.availHeight || window.innerHeight
+  };
+
+  function payload() {
+    return {
+      dpr: window.devicePixelRatio || 1,
+      availWidth: screen.availWidth || window.innerWidth,
+      availHeight: screen.availHeight || window.innerHeight,
+      outerWidth: window.outerWidth || window.innerWidth,
+      outerHeight: window.outerHeight || window.innerHeight
+    };
+  }
+
+  async function notify() {
+    try {
+      if (window.pywebview?.api?.update_resolution) {
+        await window.pywebview.api.update_resolution(payload());
+      }
+    } catch (_) {}
+  }
+
+  function maybeNotify() {
+    const dpr = window.devicePixelRatio || 1;
+    const aw = screen.availWidth || window.innerWidth;
+    const ah = screen.availHeight || window.innerHeight;
+    if (Math.abs(dpr - last.dpr) > 0.01 || aw !== last.aw || ah !== last.ah) {
+      last = { dpr, aw, ah };
+      notify();
+    }
+  }
+
+  // Event-based: DPR and screen changes
+  window.addEventListener('resize', maybeNotify, { passive: true });
+
+  // Media query hook for explicit DPR changes
+  let mq = window.matchMedia(`(resolution: ${last.dpr}dppx)`);
+  function onMQ() { maybeNotify(); remountMQ(); }
+  function remountMQ() {
+    try { mq.removeEventListener('change', onMQ); } catch(e) {}
+    mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    try { mq.addEventListener('change', onMQ); } catch(e) {}
+  }
+  try { mq.addEventListener('change', onMQ); } catch(e) {}
+
+  // Periodic: force check every 20 seconds regardless
+  setInterval(maybeNotify, 20000);
+
+  // First paint
+  setTimeout(notify, 0);
+})();
+"""
+if __name__ == '__main__':
+    start_flask_thread()
+    threading.Thread(target=watchdog_flask, daemon=True).start()
+    time.sleep(1)
+
+    window = webview.create_window("Prompt Repository", FLASK_URL, width=BASE_WIDTH, height=BASE_HEIGHT)
+    api = Api(window)
+
+    # Expose the API method for JS
+    window.expose(api.update_resolution)
+
+    # Inject watcher once the DOM is ready
+    def _install_js():
+        try:
+            window.evaluate_js(DPR_AND_SCREEN_WATCHER)
+        except Exception as e:
+            print("Failed to inject watcher:", e)
+
+    window.events.loaded += _install_js
+
+    # Optional: initial nudge for crispness
+    force_redraw(window)
+
+    try:
+        if platform.system() == 'Darwin':
+            webview.start(gui='cocoa', http_server=True, debug=False, js_api=api)
+        else:
+            webview.start(gui='edgechromium', http_server=True, debug=False, js_api=api)
+    except:
+        webview.start(gui='qt', http_server=True, debug=False, js_api=api)
+    finally:
+        shutdown()
+
