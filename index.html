@@ -516,7 +516,7 @@ body {
 }
 
 .prompt-content-inner {
-  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -535,9 +535,13 @@ body {
   font-size: inherit;
   color: #1e40af;
   font-weight: 600;
-  min-width: 60px;
+  min-width: 30px;
+  max-width: 300px;
+  width: auto;
   outline: none;
   transition: all 0.2s ease;
+  resize: none;
+  overflow: hidden;
 }
 
 .variable-input:focus {
@@ -1359,7 +1363,8 @@ img[src*="/static/"] {
         </div>
     </div>
 </div>
-
+<!-- Hidden text measurer for dynamic input sizing -->
+<span id="textMeasurer" class="text-measurer"></span>
 <!-- Modals -->
 <div id="addPromptModal" class="modal">
     <div class="modal-content">
@@ -1605,6 +1610,25 @@ function parseVariables(text) {
     return variables;
 }
 
+// Dynamic input sizing function
+function resizeVariableInput(input) {
+    const measurer = document.getElementById('textMeasurer');
+    const text = input.value || input.placeholder;
+    
+    // Copy styles to measurer
+    measurer.style.fontFamily = window.getComputedStyle(input).fontFamily;
+    measurer.style.fontSize = window.getComputedStyle(input).fontSize;
+    measurer.style.fontWeight = window.getComputedStyle(input).fontWeight;
+    measurer.style.padding = window.getComputedStyle(input).padding;
+    measurer.style.border = window.getComputedStyle(input).border;
+    
+    // Set text and measure
+    measurer.textContent = text;
+    const width = Math.max(40, Math.min(300, measurer.offsetWidth + 10)); // Min 40px, max 300px, +10px buffer
+    
+    input.style.width = width + 'px';
+}
+    
 function renderPromptWithVariables(text, hasVariables = false) {
     if (!hasVariables) {
         return escapeHtml(text);
@@ -1622,13 +1646,14 @@ function renderPromptWithVariables(text, hasVariables = false) {
         // Add text before this variable
         result += escapeHtml(text.substring(lastIndex, variable.index));
         
-        // Add variable input
+        // Add variable input with dynamic sizing
         result += `<input type="text" 
                           class="variable-input placeholder-mode" 
                           placeholder="${escapeHtml(variable.name)}" 
                           data-variable-name="${escapeHtml(variable.name)}"
                           onchange="updateVariableState(this)"
-                          onfocus="this.classList.remove('placeholder-mode')"
+                          oninput="resizeVariableInput(this)"
+                          onfocus="this.classList.remove('placeholder-mode'); resizeVariableInput(this);"
                           onblur="updateVariableState(this)">`;
         
         lastIndex = variable.index + variable.placeholder.length;
@@ -1646,6 +1671,7 @@ function updateVariableState(input) {
     } else {
         input.classList.remove('placeholder-mode');
     }
+    resizeVariableInput(input);
 }
 
 function getPromptTextWithVariables() {
@@ -2253,6 +2279,14 @@ function showPromptDetails() {
     // Render prompt content with variables
     const contentContainer = document.getElementById('promptContentInner');
     contentContainer.innerHTML = renderPromptWithVariables(selectedPrompt.text, selectedPrompt.hasVariables);
+
+    // Initialize dynamic sizing for all variable inputs
+    setTimeout(() => {
+        const variableInputs = contentContainer.querySelectorAll('.variable-input');
+        variableInputs.forEach(input => {
+            resizeVariableInput(input);
+        });
+    }, 0);
     
     // Update badges
     const badgesContainer = document.getElementById('promptBadges');
