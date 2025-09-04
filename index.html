@@ -97,6 +97,11 @@ body {
   font-size: 14px;
 }
 
+.variables-info {
+  color: #059669;
+  background-color: #d1fae5;
+}
+
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
@@ -510,7 +515,7 @@ body {
   position: relative;
 }
 
-.prompt-content pre {
+.prompt-content-inner {
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 14px;
   line-height: 1.5;
@@ -519,10 +524,44 @@ body {
   margin: 0;
   padding-right: 50px;
 }
+.variable-input {
+  display: inline-block;
+  background-color: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 0 2px;
+  font-family: inherit;
+  font-size: inherit;
+  color: #1e40af;
+  font-weight: 600;
+  min-width: 60px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.variable-input:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background-color: #fefefe;
+}
+
+.variable-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.variable-input.placeholder-mode {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #64748b;
+  font-style: italic;
+}
 
 /* Copy button in bottom right of prompt content */
 .prompt-copy-btn {
-  position: absolute;
+  position: sticky;
   bottom: 12px;
   right: 12px;
   background-color: #ffffff;
@@ -758,7 +797,63 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Toggle Switch for Variables */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
 
+.toggle-switch input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background-color: #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
+  background-color: #3b82f6;
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+/* Variables help text */
+.variables-help {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  font-style: italic;
+}
 /* Modals */
 .modal {
   display: none;
@@ -1011,7 +1106,7 @@ body {
     justify-content: space-between;
   }
 
-  .prompt-content pre {
+  .prompt-content-inner {
     padding-right: 20px;
   }
 
@@ -1234,7 +1329,7 @@ img[src*="/static/"] {
                             </div>
                         </div>
                         <div class="prompt-content">
-                            <pre id="promptText"></pre>
+                            <div id="promptContentInner" class="prompt-content-inner"></div>
                             <button class="prompt-copy-btn" onclick="copyPrompt()" title="Copy prompt">
                               <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
                           </button>
@@ -1278,6 +1373,16 @@ img[src*="/static/"] {
                     <label for="promptName">Prompt Name</label>
                     <input type="text" id="promptName" required>
                 </div>
+                <div class="form-group">
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="variablesToggle" onchange="toggleVariablesMode()">
+                            <label for="variablesToggle" class="toggle-slider"></label>
+                            <label for="variablesToggle" class="toggle-label">Enable Variables</label>
+                        </div>
+                        <div id="variablesHelp" class="variables-help hidden">
+                            Use [variable_name] to create editable placeholders in your prompt
+                        </div>
+                    </div>
                 <div class="form-group">
                     <label for="promptTextArea">Prompt Text</label>
                     <textarea id="promptTextArea" rows="6" required></textarea>
@@ -1327,6 +1432,16 @@ img[src*="/static/"] {
                 <label for="editPromptName">Prompt Name</label>
                 <input type="text" id="editPromptName">
             </div>
+            <div class="form-group">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="editVariablesToggle" onchange="toggleEditVariablesMode()">
+                        <label for="editVariablesToggle" class="toggle-slider"></label>
+                        <label for="editVariablesToggle" class="toggle-label">Enable Variables</label>
+                    </div>
+                    <div id="editVariablesHelp" class="variables-help hidden">
+                        Use [variable_name] to create editable placeholders in your prompt
+                    </div>
+                </div>
             <div class="form-group">
                 <label for="editPromptText">Prompt Text</label>
                 <textarea id="editPromptText" rows="6"></textarea>
@@ -1448,6 +1563,105 @@ function setupEventListeners() {
             }
         }
     });
+}
+
+// Variables functionality
+function toggleVariablesMode() {
+    const toggle = document.getElementById('variablesToggle');
+    const help = document.getElementById('variablesHelp');
+    
+    if (toggle.checked) {
+        help.classList.remove('hidden');
+    } else {
+        help.classList.add('hidden');
+    }
+}
+
+function toggleEditVariablesMode() {
+    const toggle = document.getElementById('editVariablesToggle');
+    const help = document.getElementById('editVariablesHelp');
+    
+    if (toggle.checked) {
+        help.classList.remove('hidden');
+    } else {
+        help.classList.add('hidden');
+    }
+}
+
+function parseVariables(text) {
+    // Find all [variable] patterns
+    const variablePattern = /\[([^\]]+)\]/g;
+    const variables = [];
+    let match;
+    
+    while ((match = variablePattern.exec(text)) !== null) {
+        variables.push({
+            placeholder: match[0],
+            name: match[1],
+            index: match.index
+        });
+    }
+    
+    return variables;
+}
+
+function renderPromptWithVariables(text, hasVariables = false) {
+    if (!hasVariables) {
+        return escapeHtml(text);
+    }
+    
+    const variables = parseVariables(text);
+    if (variables.length === 0) {
+        return escapeHtml(text);
+    }
+    
+    let result = '';
+    let lastIndex = 0;
+    
+    variables.forEach((variable, index) => {
+        // Add text before this variable
+        result += escapeHtml(text.substring(lastIndex, variable.index));
+        
+        // Add variable input
+        result += `<input type="text" 
+                          class="variable-input placeholder-mode" 
+                          placeholder="${escapeHtml(variable.name)}" 
+                          data-variable-name="${escapeHtml(variable.name)}"
+                          onchange="updateVariableState(this)"
+                          onfocus="this.classList.remove('placeholder-mode')"
+                          onblur="updateVariableState(this)">`;
+        
+        lastIndex = variable.index + variable.placeholder.length;
+    });
+    
+    // Add remaining text
+    result += escapeHtml(text.substring(lastIndex));
+    
+    return result;
+}
+
+function updateVariableState(input) {
+    if (input.value.trim() === '') {
+        input.classList.add('placeholder-mode');
+    } else {
+        input.classList.remove('placeholder-mode');
+    }
+}
+
+function getPromptTextWithVariables() {
+    const container = document.getElementById('promptContentInner');
+    const inputs = container.querySelectorAll('.variable-input');
+    let text = selectedPrompt.text;
+    
+    // Replace variables with their values or placeholders
+    inputs.forEach(input => {
+        const variableName = input.dataset.variableName;
+        const value = input.value.trim() || input.placeholder;
+        const placeholder = `[${variableName}]`;
+        text = text.replace(placeholder, value);
+    });
+    
+    return text;
 }
 
 // Search functionality
@@ -2035,7 +2249,10 @@ function showPromptDetails() {
     document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('promptTitle').textContent = selectedPrompt.name;
-    document.getElementById('promptText').textContent = selectedPrompt.text;
+    
+    // Render prompt content with variables
+    const contentContainer = document.getElementById('promptContentInner');
+    contentContainer.innerHTML = renderPromptWithVariables(selectedPrompt.text, selectedPrompt.hasVariables);
     
     // Update badges
     const badgesContainer = document.getElementById('promptBadges');
@@ -2047,6 +2264,10 @@ function showPromptDetails() {
     
     if (selectedPrompt.usageCount > 0) {
         badges += `<span class="prompt-badge usage-info">Used ${selectedPrompt.usageCount} times</span>`;
+    }
+    
+    if (selectedPrompt.hasVariables) {
+        badges += `<span class="prompt-badge variables-info">Interactive Variables</span>`;
     }
     
     badgesContainer.innerHTML = badges;
@@ -2083,6 +2304,9 @@ function showFolderDetails() {
         const versionBadge = prompt.versions && prompt.versions.length > 1 
             ? `<span class="version-badge">v${prompt.currentVersion}</span>`
             : '';
+        const variablesBadge = prompt.hasVariables 
+            ? `<span class="variables-info">Variables</span>` 
+            : '';
             
         html += `
             <div class="folder-prompt-item" onclick="selectPrompt('${prompt.id}')">
@@ -2091,6 +2315,7 @@ function showFolderDetails() {
                     <span>${escapeHtml(prompt.name)}</span>
                     ${versionBadge}
                     ${usageBadge}
+                    ${variablesBadge}
                 </div>
             </div>
         `;
@@ -2132,13 +2357,15 @@ async function addPrompt(event) {
     
     const name = document.getElementById('promptName').value;
     const text = document.getElementById('promptTextArea').value;
+    const hasVariables = document.getElementById('variablesToggle').checked;
     
     const result = await apiCall('/api/prompts', {
         method: 'POST',
         body: JSON.stringify({
             name,
             text,
-            folderId: selectedFolder
+            folderId: selectedFolder,
+            hasVariables
         })
     });
     
@@ -2148,6 +2375,8 @@ async function addPrompt(event) {
         showToast('Prompt added successfully');
         document.getElementById('promptName').value = '';
         document.getElementById('promptTextArea').value = '';
+        document.getElementById('variablesToggle').checked = false;
+        document.getElementById('variablesHelp').classList.add('hidden');
     }
 }
 
@@ -2177,6 +2406,14 @@ function editPrompt() {
     
     document.getElementById('editPromptName').value = selectedPrompt.name;
     document.getElementById('editPromptText').value = selectedPrompt.text;
+    document.getElementById('editVariablesToggle').checked = selectedPrompt.hasVariables || false;
+    
+    if (selectedPrompt.hasVariables) {
+        document.getElementById('editVariablesHelp').classList.remove('hidden');
+    } else {
+        document.getElementById('editVariablesHelp').classList.add('hidden');
+    }
+    
     showModal('editPromptModal');
 }
 
@@ -2185,10 +2422,11 @@ async function saveEdit() {
     
     const name = document.getElementById('editPromptName').value;
     const text = document.getElementById('editPromptText').value;
+    const hasVariables = document.getElementById('editVariablesToggle').checked;
     
     const result = await apiCall(`/api/prompts/${selectedPrompt.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name, text })
+        body: JSON.stringify({ name, text, hasVariables })
     });
     
     if (result) {
@@ -2211,8 +2449,15 @@ async function copyPromptById(promptId) {
     const prompt = data.prompts.find(p => p.id === promptId);
     if (!prompt) return;
     
+    let textToCopy = prompt.text;
+    
+    // If this is the currently selected prompt and has variables, get the processed text
+    if (selectedPrompt && selectedPrompt.id === promptId && prompt.hasVariables) {
+        textToCopy = getPromptTextWithVariables();
+    }
+    
     try {
-        await navigator.clipboard.writeText(prompt.text);
+        await navigator.clipboard.writeText(textToCopy);
         
         // Track usage
         await apiCall(`/api/prompts/${promptId}/copy`, {
@@ -2400,7 +2645,7 @@ showEmptyState();
   let baseDPR = window.devicePixelRatio || 1; // for optional physical-size mode
   let lastDPR = baseDPR;
 
-  // Try to “nudge” rendering with no visual change
+  // Try to "nudge" rendering with no visual change
   function forceRepaint() {
     const root = document.documentElement;
     root.style.willChange = 'transform';
