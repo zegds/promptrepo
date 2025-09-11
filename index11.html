@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Manager</title>
+    <style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #ffffff;
+  color: #0f172a;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Top Bar */
+.top-bar {
+  background: #cc0000;
+  padding: 4px;
+  width: 100%;
+  margin: 0;
+  height: 40px;
+  top: 0;
+  left: 0;
+  position: fixed;
+  box-sizing: border-box;
+  z-index: 3;
+}
+
+/* Tiny utility class */
+.tiny {
+  max-width: 250px;
+  padding-left: 30px;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 300px;
+  background-color: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.app-title i {
+  font-size: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-container {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.6;
+}
+
+#searchInput {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-group {
+  padding: 16px;
+}
+
+.sidebar-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.prompt-list, .source-list {
+  min-height: 20px;
+}
+
+/* Enhanced Drag and Drop Styles */
+.prompt-item, .folder-item, .source-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: all 0.2s ease;
+  position: relative;
+  user-select: none;
+  border: 2px solid transparent;
+}
+
+.prompt-item:hover, .folder-item:hover, .source-item:hover {
+  background-color: #f1f5f9;
+}
+
+.prompt-item.selected, .folder-item.selected, .source-item.selected {
+  background-color: #e2e8f0;
+}
+
+.prompt-item i, .folder-item i, .source-item i {
+  margin-right: 8px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.prompt-name, .folder-name, .source-name {
+  flex: 1;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.version-badge, .usage-badge, .examples-badge {
+  font-size: 11px;
+  color: #64748b;
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.usage-badge {
+  color: #2563eb;
+  background-color: #dbeafe;
+}
+
+.examples-badge {
+  color: #7c3aed;
+  background-color: #ede9fe;
+}
+
+.variables-info {
+  color: #059669;
+  background-color: #d1fae5;
+}
+
+.delete-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: opacity 0.2s;
+  margin-left: 8px;
+}
+
+.prompt-item:hover .delete-btn,
+.folder-item:hover .delete-btn,
+.source-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+/* Drag handle - hidden by default, shown on hover */
+.drag-handle {
+  opacity: 0;
+  margin-right: 8px;
+  cursor: grab;
+  transition: opacity 0.2s;
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-handle img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 12px !important;
+  height: 12px !important;
+  opacity: 1;
+}
+
+.folder-item:hover .drag-handle,
+.prompt-item:hover .drag-handle,
+.source-item:hover .drag-handle {
+  opacity: 1;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Folder count badge */
+.folder-count {
+  font-size: 11px;
+  color: #64748b;
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  margin-right: 8px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Folder children indentation */
+.folder-children {
+  margin-left: 20px;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 8px;
+  margin-top: 4px;
+}
+
+/* Enhanced Drop Zones */
+.drop-zone {
+  height: 4px;
+  margin: 2px 0;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  opacity: 0;
+  background-color: transparent;
+  position: relative;
+}
+
+.drop-zone.drag-over {
+  opacity: 1;
+  height: 32px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px dashed #3b82f6;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.drop-zone.drag-over::before {
+  content: 'Drop here';
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Folder drop zone for nesting */
+.folder-drop-zone {
+  min-height: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  margin: 2px 0;
+  opacity: 0;
+  background-color: transparent;
+}
+
+.folder-drop-zone.drag-over {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px dashed #0ea5e9;
+  min-height: 40px;
+  margin: 8px 0;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+}
+
+.folder-drop-zone.drag-over::before {
+  content: 'Drop to add to folder';
+  color: #0ea5e9;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Drag states */
+.prompt-item.dragging,
+.folder-item.dragging,
+.source-item.dragging {
+  opacity: 0.6;
+  transform: scale(1.02);
+  z-index: 1000;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+  border: 2px solid #3b82f6;
+}
+
+.folder-item.drag-hover {
+    background-color: #f0f9ff !important;
+    border: 2px solid #3b82f6 !important;
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.folder-item.drag-hover::after {
+    content: 'Drop to add to folder';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #3b82f6;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+}
+
+/* Drag preview */
+.drag-preview {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  pointer-events: none;
+  font-size: 14px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #ffffff;
+}
+
+.sidebar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.sidebar-toggle:hover {
+  background-color: #f1f5f9;
+}
+
+/* Header Tabs */
+.header-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: #64748b;
+  background-color: transparent;
+  border: 1px solid transparent;
+}
+
+.header-tab:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.header-tab.active {
+  background-color: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.header-tab img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.header-tab.active img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(7500%) hue-rotate(109deg) brightness(107%) contrast(107%);
+}
+
+.content-area {
+  flex: 1;
+  padding: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tab-list {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.tab-trigger {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-trigger:hover {
+  color: #0f172a;
+}
+
+.tab-trigger.active {
+  color: #0f172a;
+  border-bottom-color: #0f172a;
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Prompt Details */
+.prompt-details, .source-details {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.prompt-header, .source-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 24px;
+}
+
+.prompt-title-section, .source-title-section {
+  flex: 1;
+}
+
+.prompt-title-section h2, .source-title-section h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.prompt-badges, .source-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prompt-badge, .source-badge {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.version-info {
+  color: #64748b;
+  background-color: #f1f5f9;
+}
+
+.usage-info {
+  color: #2563eb;
+  background-color: #dbeafe;
+}
+
+.examples-info {
+  color: #7c3aed;
+  background-color: #ede9fe;
+}
+
+.variables-info {
+  color: #059669;
+  background-color: #d1fae5;
+}
+
+.prompt-actions, .source-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Enhanced prompt content with variables support */
+.prompt-content, .source-content {
+  flex: 1;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.prompt-content-inner, .source-content-inner {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  padding-right: 60px;
+  padding-bottom: 20px;
+}
+
+/* Source examples styling */
+.source-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.source-example {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #ffffff;
+}
+
+.source-example-header {
+  display: flex;
+  justify-content: between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.source-example-title {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.source-example-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.source-content-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.source-content-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c3aed;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.source-content-text {
+  font-size: 14px;
+  color: #374151;
+  background-color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Dynamic variable input styling */
+.variable-input {
+  display: inline-block;
+  background-color: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 0 2px;
+  font-family: inherit;
+  font-size: inherit;
+  color: #1e40af;
+  font-weight: 600;
+  min-width: 40px;
+  max-width: 300px;
+  width: auto;
+  outline: none;
+  transition: all 0.2s ease;
+  resize: none;
+  overflow: hidden;
+}
+
+.variable-input:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background-color: #fefefe;
+}
+
+.variable-input::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.variable-input.placeholder-mode {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Source variable styling */
+.source-variable {
+  display: inline-block;
+  background-color: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 0 2px;
+  font-family: inherit;
+  font-size: inherit;
+  color: #92400e;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-variable:hover {
+  background-color: #fde68a;
+  border-color: #d97706;
+}
+
+/* Hidden span for measuring text width */
+.text-measurer {
+  position: absolute;
+  visibility: hidden;
+  height: auto;
+  width: auto;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  padding: 2px 8px;
+  border: 2px solid transparent;
+  pointer-events: none;
+  top: -9999px;
+  left: -9999px;
+}
+
+/* Sticky copy button that follows scroll */
+.prompt-copy-btn, .source-copy-btn {
+  position: sticky;
+  bottom: 12px;
+  right: 12px;
+  float: right;
+  clear: both;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  z-index: 10;
+  margin-top: 16px;
+}
+
+.prompt-copy-btn:hover, .source-copy-btn:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.prompt-copy-btn:active, .source-copy-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Folder Details */
+.folder-details h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.folder-prompts, .folder-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.folder-prompt-item, .folder-source-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.folder-prompt-item:hover, .folder-source-item:hover {
+  background-color: #f8fafc;
+}
+
+.folder-prompt-info, .folder-source-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Most Used */
+.most-used-content h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.most-used-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.most-used-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.most-used-item:hover {
+  background-color: #f8fafc;
+}
+
+.most-used-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-number {
+  font-size: 18px;
+  font-weight: 700;
+  color: #64748b;
+  width: 32px;
+  text-align: center;
+}
+
+.most-used-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.most-used-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.most-used-preview {
+  font-size: 14px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.most-used-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563eb;
+  background-color: #dbeafe;
+  padding: 4px 12px;
+  border-radius: 4px;
+}
+
+/* No Usage State */
+.no-usage-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+  text-align: center;
+}
+
+.no-usage-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-usage-state h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.no-usage-state p {
+  font-size: 14px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-subtitle {
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background-color: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.btn-primary:hover {
+  background-color: #1e293b;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+.btn-outline:hover {
+  background-color: #f8fafc;
+}
+
+.btn-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Toggle Switch for Variables */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.toggle-switch input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background-color: #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
+  background-color: #3b82f6;
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+/* Variables help text */
+.variables-help {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Source form specific styles */
+.examples-container {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #f8fafc;
+}
+
+.examples-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.example-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #ffffff;
+}
+
+.example-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.example-title-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.remove-example-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.remove-example-btn:hover {
+  background-color: #fee2e2;
+}
+
+.content-types-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content-type-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.content-type-label {
+  width: 120px;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.content-type-text {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  min-height: 60px;
+  resize: vertical;
+}
+
+.remove-content-type-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  margin-top: 4px;
+}
+
+.remove-content-type-btn:hover {
+  background-color: #fee2e2;
+}
+
+.add-content-type-btn {
+  background: none;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.add-content-type-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #f0f9ff;
+}
+
+.add-example-btn {
+  background: none;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  font-size: 14px;
+  width: 100%;
+}
+
+.add-example-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #f0f9ff;
+}
+
+/* Modals */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background-color: #ffffff;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-large .modal-content {
+  max-width: 800px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px;
+}
+
+.modal-close:hover {
+  color: #0f172a;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #374151;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #0f172a;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* Version History */
+.versions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.version-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.version-info-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-number {
+  font-weight: 600;
+}
+
+.current-badge {
+  font-size: 11px;
+  background-color: #dcfce7;
+  color: #166534;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.version-info-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.version-timestamp {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.version-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.version-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.version-field-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.version-field-content {
+  font-size: 14px;
+  background-color: #f8fafc;
+  padding: 8px;
+  border-radius: 4px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #0f172a;
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 1001;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 999;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-toggle {
+    display: block;
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
+  .prompt-header, .source-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .prompt-actions, .source-actions {
+    justify-content: flex-start;
+  }
+
+  .most-used-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .most-used-actions {
+    justify-content: space-between;
+  }
+
+  .prompt-content-inner, .source-content-inner {
+    padding-right: 20px;
+  }
+
+  .prompt-copy-btn, .source-copy-btn {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .drop-zone.drag-over {
+    height: 28px;
+    margin: 6px 0;
+  }
+
+  .folder-drop-zone.drag-over {
+    min-height: 36px;
+    margin: 6px 0;
+  }
+
+  .header-tabs {
+    flex-wrap: wrap;
+  }
+
+  .header-tab {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+img {
+  vertical-align: middle;
+}
+
+/* SVG Icon Styling - Match Font Awesome exactly */
+img[src*="/static/"] {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Specific icon sizing to match Font Awesome */
+.search-icon img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  opacity: 0.6;
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.delete-btn img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.delete-btn:hover img {
+  filter: brightness(0) saturate(100%) invert(15%) sepia(91%) saturate(2140%) hue-rotate(349deg) brightness(99%) contrast(88%);
+}
+
+/* File and folder icons with proper spacing */
+.prompt-item img[src*="file-lines"],
+.folder-item img[src*="folder"],
+.source-item img[src*="link"] {
+  margin-right: 8px;
+  width: 14px !important;
+  height: 14px !important;
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+}
+
+.btn img {
+  filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+  width: 14px !important;
+  height: 14px !important;
+  margin-right: 6px;
+}
+
+.btn-primary img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(7500%) hue-rotate(109deg) brightness(107%) contrast(107%);
+}
+
+.btn-danger img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(7500%) hue-rotate(109deg) brightness(107%) contrast(107%);
+}
+
+.empty-icon {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  opacity: 0.5;
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.most-used-info img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 14px !important;
+  height: 14px !important;
+  margin-right: 8px;
+}
+
+.folder-prompt-info img,
+.folder-source-info img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 14px !important;
+  height: 14px !important;
+  margin-right: 8px;
+}
+
+.sidebar-toggle img {
+  filter: brightness(0) saturate(100%) invert(7%) sepia(14%) saturate(2270%) hue-rotate(209deg) brightness(95%) contrast(99%);
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.prompt-copy-btn img,
+.source-copy-btn img {
+  filter: brightness(0) saturate(100%) invert(42%) sepia(8%) saturate(1158%) hue-rotate(201deg) brightness(94%) contrast(86%);
+  width: 14px !important;
+  height: 14px !important;
+}
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <img class="tiny" src="data:image/png;base64, adjajsn">
+  
+  <div class="app-container" style="padding-top: 40px;">
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="app-title">
+                <span id="sidebarTitle">Prompt assets</span>
+            </div>
+            <div class="action-buttons">
+                <button id="addItemBtn" class="btn btn-outline" onclick="showAddModal()">
+                    <img id="addItemIcon" src="/static/plus-solid.svg" width="14" height="14" alt="Plus"> 
+                    <span id="addItemText">Prompt</span>
+                </button>
+                <button class="btn btn-outline" onclick="showAddFolderModal()">
+                    <img src="/static/folder-plus-solid.svg" width="14" height="14" alt="Folder Plus"> Folder
+                </button>
+            </div>
+            <div class="search-container">
+                <img src="/static/magnifying-glass-solid.svg" class="search-icon" width="14" height="14" alt="Search">
+                <input type="text" id="searchInput" placeholder="Search..." oninput="handleSearch()">
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="sidebar-group">
+                <div class="sidebar-group-label">Repository</div>
+                <div id="itemList" class="prompt-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="main-header">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <img src="/static/bars-solid.svg" width="18" height="18" alt="Menu">
+            </button>
+            <div class="header-tabs">
+                <div class="header-tab active" data-repository="prompts" onclick="switchRepository('prompts')">
+                    <img src="/static/database-solid.svg" width="16" height="16" alt="Database">
+                    <span>Prompt Repository</span>
+                </div>
+                <div class="header-tab" data-repository="sources" onclick="switchRepository('sources')">
+                    <img src="/static/link-solid.svg" width="16" height="16" alt="Link">
+                    <span>Source Repository</span>
+                </div>
+            </div>
+        </header>
+        <div class="content-area">
+            <div class="tabs">
+                <div class="tab-list">
+                    <button class="tab-trigger active" data-tab="repository" onclick="switchTab('repository')">
+                        Repository
+                    </button>
+                    <button class="tab-trigger" data-tab="most-used" onclick="switchTab('most-used')">
+                        Most used
+                    </button>
+                </div>
+                <div id="repository-tab" class="tab-content active">
+                    <div id="itemDetails" class="prompt-details hidden">
+                        <div id="itemHeader" class="prompt-header">
+                            <div id="itemTitleSection" class="prompt-title-section">
+                                <h2 id="itemTitle"></h2>
+                                <div id="itemBadges" class="prompt-badges"></div>
+                            </div>
+                            <div id="itemActions" class="prompt-actions">
+                                <button id="historyBtn" class="btn btn-outline hidden" onclick="showVersionHistory()">
+                                    <img src="/static/clock-rotate-left-solid.svg" width="14" height="14" alt="History"> History
+                                </button>
+                                <button class="btn btn-outline" onclick="editItem()">
+                                    <img src="/static/pen-to-square-solid.svg" width="14" height="14" alt="Edit"> Edit
+                                </button>
+                                <button class="btn btn-outline" onclick="copyItem()">
+                                    <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy"> Copy
+                                </button>
+                                <button class="btn btn-outline" onclick="deleteCurrentItem()">
+                                    <img src="/static/trash-solid.svg" width="14" height="14" alt="Delete"> Delete
+                                </button>
+                            </div>
+                        </div>
+                        <div id="itemContent" class="prompt-content">
+                            <div id="itemContentInner" class="prompt-content-inner"></div>
+                            <button id="itemCopyBtn" class="prompt-copy-btn" onclick="copyItem()" title="Copy">
+                              <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
+                          </button>
+                        </div>
+                    </div>
+                    <div id="folderDetails" class="folder-details hidden">
+                        <h2 id="folderTitle"></h2>
+                        <div id="folderItems" class="folder-prompts"></div>
+                    </div>
+                    <div id="emptyState" class="empty-state">
+                        <img id="emptyStateIcon" src="/static/database-solid.svg" width="16" height="16" alt="Database" class="empty-icon">
+                        <p id="emptyStateText">Select an item or folder to view its contents</p>
+                    </div>
+                </div>
+                <div id="most-used-tab" class="tab-content">
+                    <div class="most-used-content">
+                        <h2 id="mostUsedTitle">Most used prompts</h2>
+                        <div id="mostUsedList" class="most-used-list"></div>
+                        <div id="noUsageState" class="empty-state">
+                            <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy" class="empty-icon">
+                            <p id="noUsageText">No prompts have been copied yet</p>
+                            <p class="empty-subtitle" id="noUsageSubtext">Start copying prompts to see usage statistics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden text measurer for dynamic input sizing -->
+<span id="textMeasurer" class="text-measurer"></span>
+
+<!-- Modals -->
+<div id="addPromptModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Prompt</h3>
+            <button class="modal-close" onclick="closeModal('addPromptModal')">&times;</button>
+        </div>
+        <form onsubmit="addPrompt(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="promptName">Prompt Name</label>
+                    <input type="text" id="promptName" required>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="variablesToggle" onchange="toggleVariablesMode()">
+                        <label for="variablesToggle" class="toggle-slider"></label>
+                        <label for="variablesToggle" class="toggle-label">Enable Variables</label>
+                    </div>
+                    <div id="variablesHelp" class="variables-help hidden">
+                        Use [variable_name] for inputs and {source_name} to pull source content
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="promptTextArea">Prompt Text</label>
+                    <textarea id="promptTextArea" rows="6" required></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addPromptModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Prompt
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="addSourceModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Source</h3>
+            <button class="modal-close" onclick="closeModal('addSourceModal')">&times;</button>
+        </div>
+        <form onsubmit="addSource(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="sourceName">Source Name</label>
+                    <input type="text" id="sourceName" required>
+                </div>
+                <div class="form-group">
+                    <label for="sourceUrl">Source URL (optional)</label>
+                    <input type="url" id="sourceUrl" placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label>Examples</label>
+                    <div id="examplesContainer" class="examples-container">
+                        <div class="examples-header">
+                            <span>Content Examples</span>
+                            <button type="button" class="add-example-btn" onclick="addExample()">
+                                <img src="/static/plus-solid.svg" width="12" height="12" alt="Add"> Add Example
+                            </button>
+                        </div>
+                        <div id="examplesList" class="examples-list">
+                            <!-- Examples will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addSourceModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Source
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="addFolderModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Folder</h3>
+            <button class="modal-close" onclick="closeModal('addFolderModal')">&times;</button>
+        </div>
+        <form onsubmit="addFolder(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="folderName">Folder Name</label>
+                    <input type="text" id="folderName" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addFolderModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Create Folder
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="editPromptModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Prompt</h3>
+            <button class="modal-close" onclick="closeModal('editPromptModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="editPromptName">Prompt Name</label>
+                <input type="text" id="editPromptName">
+            </div>
+            <div class="form-group">
+                <div class="toggle-switch">
+                    <input type="checkbox" id="editVariablesToggle" onchange="toggleEditVariablesMode()">
+                    <label for="editVariablesToggle" class="toggle-slider"></label>
+                    <label for="editVariablesToggle" class="toggle-label">Enable Variables</label>
+                </div>
+                <div id="editVariablesHelp" class="variables-help hidden">
+                    Use [variable_name] for inputs and {source_name} to pull source content
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="editPromptText">Prompt Text</label>
+                <textarea id="editPromptText" rows="6"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('editPromptModal')">
+                <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete"> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveEdit()">
+                <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="editSourceModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Source</h3>
+            <button class="modal-close" onclick="closeModal('editSourceModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="editSourceName">Source Name</label>
+                <input type="text" id="editSourceName">
+            </div>
+            <div class="form-group">
+                <label for="editSourceUrl">Source URL (optional)</label>
+                <input type="url" id="editSourceUrl" placeholder="https://example.com">
+            </div>
+            <div class="form-group">
+                <label>Examples</label>
+                <div id="editExamplesContainer" class="examples-container">
+                    <div class="examples-header">
+                        <span>Content Examples</span>
+                        <button type="button" class="add-example-btn" onclick="addEditExample()">
+                            <img src="/static/plus-solid.svg" width="12" height="12" alt="Add"> Add Example
+                        </button>
+                    </div>
+                    <div id="editExamplesList" class="examples-list">
+                        <!-- Examples will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('editSourceModal')">
+                <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete"> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveSourceEdit()">
+                <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Deletion</h3>
+            <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="deleteMessage"></p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                <img src="/static/trash-solid.svg" width="14" height="14" alt="Delete"> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="versionHistoryModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="versionHistoryTitle">Version History</h3>
+            <button class="modal-close" onclick="closeModal('versionHistoryModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="versionsList" class="versions-list"></div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// Global state
+let data = { prompts: [], folders: [], sources: [] };
+let selectedItem = null;
+let selectedFolder = null;
+let searchQuery = '';
+let activeTab = 'repository';
+let activeRepository = 'prompts'; // 'prompts' or 'sources'
+let draggedItem = null;
+let draggedType = null;
+let deleteTarget = null;
+let folderExpandTimeout = null;
+let dragPreview = null;
+let lastDragEndTime = 0;
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();
+    setupEventListeners();
+    createDragPreview();
+    // Add initial example to source form
+    addExample();
+});
+
+// Create drag preview element
+function createDragPreview() {
+    dragPreview = document.createElement('div');
+    dragPreview.className = 'drag-preview';
+    document.body.appendChild(dragPreview);
+}
+
+// API calls
+async function apiCall(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('API call failed:', error);
+        showToast('An error occurred. Please try again.');
+        return null;
+    }
+}
+
+async function loadData() {
+    const result = await apiCall('/api/data');
+    if (result) {
+        data = result;
+        renderItemList();
+        renderMostUsed();
+    }
+}
+
+// Event listeners
+function setupEventListeners() {
+    // Close modals when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            closeModal(e.target.id);
+        }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const openModal = document.querySelector('.modal.show');
+            if (openModal) {
+                closeModal(openModal.id);
+            }
+        }
+    });
+}
+
+// Repository switching
+function switchRepository(repository) {
+    activeRepository = repository;
+    
+    // Update header tabs
+    document.querySelectorAll('.header-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-repository="${repository}"]`).classList.add('active');
+    
+    // Update sidebar content
+    updateSidebarForRepository();
+    
+    // Clear selections
+    selectedItem = null;
+    selectedFolder = null;
+    
+    // Render content
+    renderItemList();
+    renderMostUsed();
+    showEmptyState();
+}
+
+function updateSidebarForRepository() {
+    const sidebarTitle = document.getElementById('sidebarTitle');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const addItemIcon = document.getElementById('addItemIcon');
+    const addItemText = document.getElementById('addItemText');
+    const searchInput = document.getElementById('searchInput');
+    const emptyStateIcon = document.getElementById('emptyStateIcon');
+    const emptyStateText = document.getElementById('emptyStateText');
+    const mostUsedTitle = document.getElementById('mostUsedTitle');
+    const noUsageText = document.getElementById('noUsageText');
+    const noUsageSubtext = document.getElementById('noUsageSubtext');
+    
+    if (activeRepository === 'prompts') {
+        sidebarTitle.textContent = 'Prompt assets';
+        addItemText.textContent = 'Prompt';
+        addItemIcon.src = '/static/plus-solid.svg';
+        searchInput.placeholder = 'Search prompts...';
+        emptyStateIcon.src = '/static/database-solid.svg';
+        emptyStateText.textContent = 'Select a prompt or folder to view its contents';
+        mostUsedTitle.textContent = 'Most used prompts';
+        noUsageText.textContent = 'No prompts have been copied yet';
+        noUsageSubtext.textContent = 'Start copying prompts to see usage statistics';
+    } else {
+        sidebarTitle.textContent = 'Source assets';
+        addItemText.textContent = 'Source';
+        addItemIcon.src = '/static/plus-solid.svg';
+        searchInput.placeholder = 'Search sources...';
+        emptyStateIcon.src = '/static/link-solid.svg';
+        emptyStateText.textContent = 'Select a source or folder to view its contents';
+        mostUsedTitle.textContent = 'Most used sources';
+        noUsageText.textContent = 'No sources have been copied yet';
+        noUsageSubtext.textContent = 'Start copying sources to see usage statistics';
+    }
+}
+
+// Variables functionality
+function toggleVariablesMode() {
+    const toggle = document.getElementById('variablesToggle');
+    const help = document.getElementById('variablesHelp');
+    
+    if (toggle.checked) {
+        help.classList.remove('hidden');
+    } else {
+        help.classList.add('hidden');
+    }
+}
+
+function toggleEditVariablesMode() {
+    const toggle = document.getElementById('editVariablesToggle');
+    const help = document.getElementById('editVariablesHelp');
+    
+    if (toggle.checked) {
+        help.classList.remove('hidden');
+    } else {
+        help.classList.add('hidden');
+    }
+}
+
+function parseVariables(text) {
+    // Find all [variable] patterns for input variables
+    const variablePattern = /\[([^\]]+)\]/g;
+    const variables = [];
+    let match;
+    
+    while ((match = variablePattern.exec(text)) !== null) {
+        variables.push({
+            type: 'variable',
+            placeholder: match[0],
+            name: match[1],
+            index: match.index
+        });
+    }
+    
+    return variables;
+}
+
+function parseSources(text) {
+    // Find all {source} patterns for source variables
+    const sourcePattern = /\{([^}]+)\}/g;
+    const sources = [];
+    let match;
+    
+    while ((match = sourcePattern.exec(text)) !== null) {
+        sources.push({
+            type: 'source',
+            placeholder: match[0],
+            name: match[1],
+            index: match.index
+        });
+    }
+    
+    return sources;
+}
+
+function parseAllVariables(text) {
+    const variables = parseVariables(text);
+    const sources = parseSources(text);
+    
+    // Combine and sort by index
+    return [...variables, ...sources].sort((a, b) => a.index - b.index);
+}
+
+// Dynamic input sizing function
+function resizeVariableInput(input) {
+    const measurer = document.getElementById('textMeasurer');
+    const text = input.value || input.placeholder;
+    
+    // Copy styles to measurer
+    measurer.style.fontFamily = window.getComputedStyle(input).fontFamily;
+    measurer.style.fontSize = window.getComputedStyle(input).fontSize;
+    measurer.style.fontWeight = window.getComputedStyle(input).fontWeight;
+    measurer.style.padding = window.getComputedStyle(input).padding;
+    measurer.style.border = window.getComputedStyle(input).border;
+    
+    // Set text and measure
+    measurer.textContent = text;
+    const width = Math.max(40, Math.min(300, measurer.offsetWidth + 10)); // Min 40px, max 300px, +10px buffer
+    
+    input.style.width = width + 'px';
+}
+
+function renderPromptWithVariables(text, hasVariables = false) {
+    if (!hasVariables) {
+        return escapeHtml(text);
+    }
+    
+    const allVariables = parseAllVariables(text);
+    if (allVariables.length === 0) {
+        return escapeHtml(text);
+    }
+    
+    let result = '';
+    let lastIndex = 0;
+    
+    allVariables.forEach((variable, index) => {
+        // Add text before this variable
+        result += escapeHtml(text.substring(lastIndex, variable.index));
+        
+        if (variable.type === 'variable') {
+            // Add variable input with dynamic sizing
+            result += `<input type="text" 
+                              class="variable-input placeholder-mode" 
+                              placeholder="${escapeHtml(variable.name)}" 
+                              data-variable-name="${escapeHtml(variable.name)}"
+                              onchange="updateVariableState(this)"
+                              oninput="resizeVariableInput(this)"
+                              onfocus="this.classList.remove('placeholder-mode'); resizeVariableInput(this);"
+                              onblur="updateVariableState(this)">`;
+        } else if (variable.type === 'source') {
+            // Add source variable (read-only display)
+            const sourceContent = getSourceContent(variable.name);
+            if (sourceContent) {
+                result += `<span class="source-variable" title="Source: ${escapeHtml(variable.name)}" onclick="showSourcePreview('${escapeHtml(variable.name)}')">${escapeHtml(sourceContent)}</span>`;
+            } else {
+                result += `<span class="source-variable" title="Source not found: ${escapeHtml(variable.name)}">{${escapeHtml(variable.name)}}</span>`;
+            }
+        }
+        
+        lastIndex = variable.index + variable.placeholder.length;
+    });
+    
+    // Add remaining text
+    result += escapeHtml(text.substring(lastIndex));
+    
+    return result;
+}
+
+function getSourceContent(sourceName) {
+    const source = data.sources.find(s => s.name.toLowerCase() === sourceName.toLowerCase());
+    if (!source || !source.examples || source.examples.length === 0) {
+        return null;
+    }
+    
+    // Return the first example's content as a formatted string
+    const firstExample = source.examples[0];
+    let content = '';
+    
+    if (firstExample.title) {
+        content += firstExample.title + '\n\n';
+    }
+    
+    firstExample.contentTypes.forEach(ct => {
+        if (ct.label && ct.text) {
+            content += `${ct.label}: ${ct.text}\n`;
+        }
+    });
+    
+    return content.trim();
+}
+
+function updateVariableState(input) {
+    if (input.value.trim() === '') {
+        input.classList.add('placeholder-mode');
+    } else {
+        input.classList.remove('placeholder-mode');
+    }
+    resizeVariableInput(input);
+}
+
+function getPromptTextWithVariables() {
+    const container = document.getElementById('itemContentInner');
+    const inputs = container.querySelectorAll('.variable-input');
+    let text = selectedItem.text;
+    
+    // Replace variables with their values or placeholders
+    inputs.forEach(input => {
+        const variableName = input.dataset.variableName;
+        const value = input.value.trim() || input.placeholder;
+        const placeholder = `[${variableName}]`;
+        text = text.replace(placeholder, value);
+    });
+    
+    // Replace source variables with their content
+    const sources = parseSources(selectedItem.text);
+    sources.forEach(source => {
+        const sourceContent = getSourceContent(source.name);
+        if (sourceContent) {
+            text = text.replace(source.placeholder, sourceContent);
+        }
+    });
+    
+    return text;
+}
+
+// Search functionality
+function handleSearch() {
+    searchQuery = document.getElementById('searchInput').value;
+    renderItemList();
+}
+
+function getFilteredItems() {
+    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    if (!searchQuery) return items;
+    
+    const nameMatches = items.filter(item => 
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    if (nameMatches.length > 0) return nameMatches;
+    
+    return items.filter(item => {
+        if (activeRepository === 'prompts') {
+            return item.text.toLowerCase().includes(searchQuery.toLowerCase());
+        } else {
+            // Search in source examples
+            return item.examples && item.examples.some(example => 
+                example.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                example.contentTypes.some(ct => 
+                    ct.text.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+            );
+        }
+    });
+}
+
+// Helper function to get all items in a folder (including subfolders)
+function getItemsInFolder(folderId, includeSubfolders = false, filteredItems = null) {
+    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    const item
