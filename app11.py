@@ -1,0 +1,453 @@
+from flask import Flask, jsonify, request, render_template
+import os
+import json
+import time
+from pathlib import Path
+
+app = Flask(__name__)
+
+DOCUMENTS_DIR = Path.home() / 'Documents' / 'PromptData'
+DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
+DATA_FILE = DOCUMENTS_DIR / 'config.json'
+COOLDOWN_MINUTES = 3
+
+def load_data():
+    """Load data from config.json"""
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, 'r') as f:
+                data = json.load(f)
+                
+                # Ensure all prompts have required fields
+                for i, prompt in enumerate(data.get('prompts', [])):
+                    if 'versions' not in prompt:
+                        prompt['versions'] = [{
+                            'id': f"{int(time.time())}-v1",
+                            'name': prompt['name'],
+                            'text': prompt['text'],
+                            'timestamp': int(time.time() * 1000),
+                            'version': 1
+                        }]
+                        prompt['currentVersion'] = 1
+                    if 'usageCount' not in prompt:
+                        prompt['usageCount'] = 0
+                    if 'order' not in prompt:
+                        prompt['order'] = i
+                    if 'hasVariables' not in prompt:
+                        prompt['hasVariables'] = False
+                
+                # Ensure all sources have required fields
+                for i, source in enumerate(data.get('sources', [])):
+                    if 'usageCount' not in source:
+                        source['usageCount'] = 0
+                    if 'order' not in source:
+                        source['order'] = i
+                    if 'examples' not in source:
+                        source['examples'] = []
+                
+                # Ensure all folders have order field and parentId
+                for i, folder in enumerate(data.get('folders', [])):
+                    if 'order' not in folder:
+                        folder['order'] = i
+                    if 'parentId' not in folder:
+                        folder['parentId'] = None
+                    if 'expanded' not in folder:
+                        folder['expanded'] = False  # Always default to closed
+                
+                # Sort folders, prompts, and sources by order
+                data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
+                data['prompts'] = sorted(data.get('prompts', []), key=lambda x: x.get('order', 0))
+                data['sources'] = sorted(data.get('sources', []), key=lambda x: x.get('order', 0))
+                
+                # Ensure sources array exists
+                if 'sources' not in data:
+                    data['sources'] = []
+                
+                return data
+        except json.JSONDecodeError:
+            pass
+    return {'prompts': [], 'folders': [], 'sources': []}
+
+def save_data(data):
+    """Save data to config.json"""
+    with open(DATA_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def reorder_items_in_container(items, moved_item_id, new_position):
+    """Reorder items within a container, maintaining proper order values"""
+    # Remove the moved item
+    moved_item = None
+    filtered_items = []
+    for item in items:
+        if item['id'] == moved_item_id:
+            moved_item = item
+        else:
+            filtered_items.append(item)
+    
+    if not moved_item:
+        return items
+    
+    # Clamp position to valid range
+    new_position = max(0, min(new_position, len(filtered_items)))
+    
+    # Insert at new position
+    filtered_items.insert(new_position, moved_item)
+    
+    # Update order values
+    for i, item in enumerate(filtered_items):
+        item['order'] = i
+    
+    return filtered_items
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/data', methods=['GET'])
+def get_data():
+    """Get all prompts, sources, and folders"""
+    return jsonify(load_data())
+
+@app.route('/api/prompts', methods=['POST'])
+def add_prompt():
+    """Add a new prompt"""
+    data = load_data()
+    prompt_data = request.json
+    
+    # Get the highest order number for prompts in the same folder
+    folder_id = prompt_data.get('folderId')
+    siblings = [p for p in data['prompts'] if p.get('folderId') == folder_id]
+    max_order = max([p.get('order', 0) for p in siblings], default=-1)
+    
+    now = int(time.time() * 1000)
+    new_prompt = {
+        'id': str(now),
+        'name': prompt_data['name'],
+        'text': prompt_data['text'],
+        'folderId': folder_id,
+        'order': max_order + 1,
+        'hasVariables': prompt_data.get('hasVariables', False),
+        'versions': [{
+            'id': f"{now}-v1",
+            'name': prompt_data['name'],
+            'text': prompt_data['text'],
+            'timestamp': now,
+            'version': 1
+        }],
+        'currentVersion': 1,
+        'usageCount': 0
+    }
+    
+    data['prompts'].append(new_prompt)
+    save_data(data)
+    return jsonify(new_prompt)
+
+@app.route('/api/sources', methods=['POST'])
+def add_source():
+    """Add a new source"""
+    data = load_data()
+    source_data = request.json
+    
+    # Get the highest order number for sources in the same folder
+    folder_id = source_data.get('folderId')
+    siblings = [s for s in data['sources'] if s.get('folderId') == folder_id]
+    max_order = max([s.get('order', 0) for s in siblings], default=-1)
+    
+    now = int(time.time() * 1000)
+    new_source = {
+        'id': str(now),
+        'name': source_data['name'],
+        'url': source_data.get('url', ''),
+        'examples': source_data.get('examples', []),
+        'folderId': folder_id,
+        'order': max_order + 1,
+        'usageCount': 0
+    }
+    
+    data['sources'].append(new_source)
+    save_data(data)
+    return jsonify(new_source)
+
+@app.route('/api/prompts/<prompt_id>', methods=['PUT'])
+def update_prompt(prompt_id):
+    """Update a prompt (creates new version)"""
+    data = load_data()
+    updates = request.json
+    
+    for prompt in data['prompts']:
+        if prompt['id'] == prompt_id:
+            new_version = prompt['currentVersion'] + 1
+            now = int(time.time() * 1000)
+            
+            new_version_entry = {
+                'id': f"{now}-v{new_version}",
+                'name': updates.get('name', prompt['name']),
+                'text': updates.get('text', prompt['text']),
+                'timestamp': now,
+                'version': new_version
+            }
+            
+            prompt['name'] = updates.get('name', prompt['name'])
+            prompt['text'] = updates.get('text', prompt['text'])
+            prompt['hasVariables'] = updates.get('hasVariables', prompt.get('hasVariables', False))
+            prompt['versions'].append(new_version_entry)
+            prompt['currentVersion'] = new_version
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/sources/<source_id>', methods=['PUT'])
+def update_source(source_id):
+    """Update a source"""
+    data = load_data()
+    updates = request.json
+    
+    for source in data['sources']:
+        if source['id'] == source_id:
+            source['name'] = updates.get('name', source['name'])
+            source['url'] = updates.get('url', source.get('url', ''))
+            source['examples'] = updates.get('examples', source.get('examples', []))
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/prompts/<prompt_id>', methods=['DELETE'])
+def delete_prompt(prompt_id):
+    """Delete a prompt"""
+    data = load_data()
+    data['prompts'] = [p for p in data['prompts'] if p['id'] != prompt_id]
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/sources/<source_id>', methods=['DELETE'])
+def delete_source(source_id):
+    """Delete a source"""
+    data = load_data()
+    data['sources'] = [s for s in data['sources'] if s['id'] != source_id]
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/prompts/<prompt_id>/copy', methods=['POST'])
+def copy_prompt(prompt_id):
+    """Track prompt copy with cooldown"""
+    data = load_data()
+    now = int(time.time() * 1000)
+    cooldown_ms = COOLDOWN_MINUTES * 60 * 1000
+    
+    for prompt in data['prompts']:
+        if prompt['id'] == prompt_id:
+            last_copied = prompt.get('lastCopiedAt', 0)
+            if now - last_copied >= cooldown_ms:
+                prompt['usageCount'] = prompt.get('usageCount', 0) + 1
+                prompt['lastCopiedAt'] = now
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/sources/<source_id>/copy', methods=['POST'])
+def copy_source(source_id):
+    """Track source copy with cooldown"""
+    data = load_data()
+    now = int(time.time() * 1000)
+    cooldown_ms = COOLDOWN_MINUTES * 60 * 1000
+    
+    for source in data['sources']:
+        if source['id'] == source_id:
+            last_copied = source.get('lastCopiedAt', 0)
+            if now - last_copied >= cooldown_ms:
+                source['usageCount'] = source.get('usageCount', 0) + 1
+                source['lastCopiedAt'] = now
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/prompts/<prompt_id>/restore/<version_id>', methods=['POST'])
+def restore_version(prompt_id, version_id):
+    """Restore a prompt to a previous version"""
+    data = load_data()
+    
+    for prompt in data['prompts']:
+        if prompt['id'] == prompt_id:
+            for version in prompt['versions']:
+                if version['id'] == version_id:
+                    prompt['name'] = version['name']
+                    prompt['text'] = version['text']
+                    break
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/folders', methods=['POST'])
+def add_folder():
+    """Add a new folder"""
+    data = load_data()
+    folder_data = request.json
+    
+    # Get the highest order number for the same parent level
+    parent_id = folder_data.get('parentId')
+    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id]
+    max_order = max([f.get('order', 0) for f in siblings], default=-1)
+    
+    new_folder = {
+        'id': str(int(time.time() * 1000)),
+        'name': folder_data['name'],
+        'expanded': False,  # Always default to closed
+        'order': max_order + 1,
+        'parentId': parent_id
+    }
+    
+    data['folders'].append(new_folder)
+    save_data(data)
+    return jsonify(new_folder)
+
+@app.route('/api/folders/<folder_id>', methods=['DELETE'])
+def delete_folder(folder_id):
+    """Delete a folder (moves prompts, sources, and subfolders to parent)"""
+    data = load_data()
+    
+    # Find the folder being deleted
+    folder_to_delete = None
+    for folder in data['folders']:
+        if folder['id'] == folder_id:
+            folder_to_delete = folder
+            break
+    
+    if not folder_to_delete:
+        return jsonify({'error': 'Folder not found'}), 404
+    
+    parent_id = folder_to_delete.get('parentId')
+    
+    # Move child folders to parent
+    for folder in data['folders']:
+        if folder.get('parentId') == folder_id:
+            folder['parentId'] = parent_id
+    
+    # Move prompts to parent folder
+    for prompt in data['prompts']:
+        if prompt.get('folderId') == folder_id:
+            prompt['folderId'] = parent_id
+    
+    # Move sources to parent folder
+    for source in data['sources']:
+        if source.get('folderId') == folder_id:
+            source['folderId'] = parent_id
+    
+    # Remove folder
+    data['folders'] = [f for f in data['folders'] if f['id'] != folder_id]
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/items/move', methods=['POST'])
+def move_item():
+    """Move an item (prompt, source, or folder) to a new position with intelligent positioning"""
+    data = load_data()
+    move_data = request.json
+    
+    item_type = move_data.get('type')  # 'prompt', 'source', or 'folder'
+    item_id = move_data.get('itemId')
+    target_container = move_data.get('targetContainer')  # folder ID or null for root
+    target_position = move_data.get('targetPosition')  # index in the target container
+    repository = move_data.get('repository', 'prompts')  # 'prompts' or 'sources'
+    
+    if item_type in ['prompt', 'source']:
+        # Find the item
+        items_list = data['prompts'] if item_type == 'prompt' else data['sources']
+        item = None
+        for i in items_list:
+            if i['id'] == item_id:
+                item = i
+                break
+        
+        if not item:
+            return jsonify({'error': f'{item_type.capitalize()} not found'}), 404
+        
+        # Update folder
+        item['folderId'] = target_container
+        
+        # Get all items in the target container (folders + items)
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+        container_items = [i for i in items_list if i.get('folderId') == target_container]
+        all_container_items = container_folders + container_items
+        
+        # If no position specified, put at end
+        if target_position is None:
+            target_position = len(all_container_items)
+        
+        # Clamp position to valid range
+        target_position = max(0, min(target_position, len(all_container_items)))
+        
+        # Reorder items in the target container
+        reordered_items = reorder_items_in_container(container_items, item_id, target_position - len(container_folders))
+        
+        # Update the main items list
+        for i, item_obj in enumerate(items_list):
+            if item_obj.get('folderId') == target_container:
+                for reordered in reordered_items:
+                    if item_obj['id'] == reordered['id']:
+                        items_list[i] = reordered
+                        break
+    
+    elif item_type == 'folder':
+        # Find the folder
+        folder = None
+        for f in data['folders']:
+            if f['id'] == item_id:
+                folder = f
+                break
+        
+        if not folder:
+            return jsonify({'error': 'Folder not found'}), 404
+        
+        # Check for circular reference
+        def would_create_cycle(folder_id, target_parent_id):
+            if target_parent_id is None:
+                return False
+            if target_parent_id == folder_id:
+                return True
+            
+            for f in data['folders']:
+                if f['id'] == target_parent_id:
+                    return would_create_cycle(folder_id, f.get('parentId'))
+            return False
+        
+        if would_create_cycle(item_id, target_container):
+            return jsonify({'error': 'Cannot create circular reference'}), 400
+        
+        # Update parent
+        folder['parentId'] = target_container
+        
+        # Get all items in the target container
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+        items_list = data['prompts'] if repository == 'prompts' else data['sources']
+        container_items = [i for i in items_list if i.get('folderId') == target_container]
+        all_container_items = container_folders + container_items
+        
+        # If no position specified, put at end
+        if target_position is None:
+            target_position = len(all_container_items)
+        
+        # Clamp position to valid range
+        target_position = max(0, min(target_position, len(all_container_items)))
+        
+        # Reorder folders in the target container
+        reordered_folders = reorder_items_in_container(container_folders, item_id, min(target_position, len(container_folders)))
+        
+        # Update the main folders list
+        for i, f in enumerate(data['folders']):
+            if f.get('parentId') == target_container:
+                for reordered in reordered_folders:
+                    if f['id'] == reordered['id']:
+                        data['folders'][i] = reordered
+                        break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
+if __name__ == '__main__':
+    app.run(debug=True)
