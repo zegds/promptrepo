@@ -40,12 +40,14 @@ def load_data():
                 for i, source in enumerate(data.get('sources', [])):
                     if 'usageCount' not in source:
                         source['usageCount'] = 0
+                    if 'referenceCount' not in source:
+                        source['referenceCount'] = 0
                     if 'order' not in source:
                         source['order'] = i
                     if 'examples' not in source:
                         source['examples'] = []
                 
-                # Ensure all folders have order field and parentId
+                # Ensure all folders have order field, parentId, and repository
                 for i, folder in enumerate(data.get('folders', [])):
                     if 'order' not in folder:
                         folder['order'] = i
@@ -53,6 +55,8 @@ def load_data():
                         folder['parentId'] = None
                     if 'expanded' not in folder:
                         folder['expanded'] = False  # Always default to closed
+                    if 'repository' not in folder:
+                        folder['repository'] = 'prompts'  # Default to prompts for existing folders
                 
                 # Sort folders, prompts, and sources by order
                 data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
@@ -99,6 +103,17 @@ def reorder_items_in_container(items, moved_item_id, new_position):
     
     return filtered_items
 
+def count_source_references(source_name, prompts):
+    """Count how many prompts reference this source"""
+    count = 0
+    source_pattern = f"{{{source_name.lower()}}}"
+    
+    for prompt in prompts:
+        if source_pattern in prompt.get('text', '').lower():
+            count += 1
+    
+    return count
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -106,7 +121,13 @@ def index():
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """Get all prompts, sources, and folders"""
-    return jsonify(load_data())
+    data = load_data()
+    
+    # Update reference counts for sources
+    for source in data['sources']:
+        source['referenceCount'] = count_source_references(source['name'], data['prompts'])
+    
+    return jsonify(data)
 
 @app.route('/api/prompts', methods=['POST'])
 def add_prompt():
@@ -161,7 +182,8 @@ def add_source():
         'examples': source_data.get('examples', []),
         'folderId': folder_id,
         'order': max_order + 1,
-        'usageCount': 0
+        'usageCount': 0,
+        'referenceCount': 0
     }
     
     data['sources'].append(new_source)
@@ -288,9 +310,10 @@ def add_folder():
     data = load_data()
     folder_data = request.json
     
-    # Get the highest order number for the same parent level
+    # Get the highest order number for the same parent level and repository
     parent_id = folder_data.get('parentId')
-    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id]
+    repository = folder_data.get('repository', 'prompts')
+    siblings = [f for f in data['folders'] if f.get('parentId') == parent_id and f.get('repository') == repository]
     max_order = max([f.get('order', 0) for f in siblings], default=-1)
     
     new_folder = {
@@ -298,7 +321,8 @@ def add_folder():
         'name': folder_data['name'],
         'expanded': False,  # Always default to closed
         'order': max_order + 1,
-        'parentId': parent_id
+        'parentId': parent_id,
+        'repository': repository
     }
     
     data['folders'].append(new_folder)
@@ -321,21 +345,22 @@ def delete_folder(folder_id):
         return jsonify({'error': 'Folder not found'}), 404
     
     parent_id = folder_to_delete.get('parentId')
+    repository = folder_to_delete.get('repository', 'prompts')
     
     # Move child folders to parent
     for folder in data['folders']:
         if folder.get('parentId') == folder_id:
             folder['parentId'] = parent_id
     
-    # Move prompts to parent folder
-    for prompt in data['prompts']:
-        if prompt.get('folderId') == folder_id:
-            prompt['folderId'] = parent_id
-    
-    # Move sources to parent folder
-    for source in data['sources']:
-        if source.get('folderId') == folder_id:
-            source['folderId'] = parent_id
+    # Move items to parent folder based on repository
+    if repository == 'prompts':
+        for prompt in data['prompts']:
+            if prompt.get('folderId') == folder_id:
+                prompt['folderId'] = parent_id
+    else:
+        for source in data['sources']:
+            if source.get('folderId') == folder_id:
+                source['folderId'] = parent_id
     
     # Remove folder
     data['folders'] = [f for f in data['folders'] if f['id'] != folder_id]
@@ -371,7 +396,7 @@ def move_item():
         item['folderId'] = target_container
         
         # Get all items in the target container (folders + items)
-        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container and f.get('repository') == repository]
         container_items = [i for i in items_list if i.get('folderId') == target_container]
         all_container_items = container_folders + container_items
         
@@ -423,7 +448,7 @@ def move_item():
         folder['parentId'] = target_container
         
         # Get all items in the target container
-        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container]
+        container_folders = [f for f in data['folders'] if f.get('parentId') == target_container and f.get('repository') == repository]
         items_list = data['prompts'] if repository == 'prompts' else data['sources']
         container_items = [i for i in items_list if i.get('folderId') == target_container]
         all_container_items = container_folders + container_items
@@ -440,7 +465,7 @@ def move_item():
         
         # Update the main folders list
         for i, f in enumerate(data['folders']):
-            if f.get('parentId') == target_container:
+            if f.get('parentId') == target_container and f.get('repository') == repository:
                 for reordered in reordered_folders:
                     if f['id'] == reordered['id']:
                         data['folders'][i] = reordered
