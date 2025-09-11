@@ -1080,12 +1080,13 @@ body {
 
 .content-type-item {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   align-items: flex-start;
 }
 
 .content-type-label {
-  width: 120px;
+  width: 100%;
   padding: 4px 8px;
   border: 1px solid #e2e8f0;
   border-radius: 4px;
@@ -1094,12 +1095,13 @@ body {
 }
 
 .content-type-text {
-  flex: 1;
-  padding: 4px 8px;
+  width: 100%;
+  padding: 8px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 4px;
-  min-height: 60px;
+  min-height: 80px;
   resize: vertical;
+  font-family: inherit;
 }
 
 .remove-content-type-btn {
@@ -1110,7 +1112,7 @@ body {
   padding: 4px;
   border-radius: 4px;
   transition: background-color 0.2s;
-  margin-top: 4px;
+  align-self: flex-end;
 }
 
 .remove-content-type-btn:hover {
@@ -1128,6 +1130,7 @@ body {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  width: 100%;
 }
 
 .add-content-type-btn:hover {
@@ -1146,6 +1149,7 @@ body {
   transition: all 0.2s;
   font-size: 14px;
   width: 100%;
+  margin-top: 16px;
 }
 
 .add-example-btn:hover {
@@ -1572,7 +1576,7 @@ img[src*="/static/"] {
                     <span>Prompt Repository</span>
                 </div>
                 <div class="header-tab" data-repository="sources" onclick="switchRepository('sources')">
-                    <img src="/static/link-solid.svg" width="16" height="16" alt="Link">
+                    <img src="/static/link-solid-full.svg" width="16" height="16" alt="Link">
                     <span>Source Repository</span>
                 </div>
             </div>
@@ -1703,13 +1707,13 @@ img[src*="/static/"] {
                     <div id="examplesContainer" class="examples-container">
                         <div class="examples-header">
                             <span>Content Examples</span>
-                            <button type="button" class="add-example-btn" onclick="addExample()">
-                                <img src="/static/plus-solid.svg" width="12" height="12" alt="Add"> Add Example
-                            </button>
                         </div>
                         <div id="examplesList" class="examples-list">
                             <!-- Examples will be added here -->
                         </div>
+                        <button type="button" class="add-example-btn" onclick="addExample()">
+                            <img src="/static/plus-solid.svg" width="12" height="12" alt="Add"> Add Example
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1803,13 +1807,13 @@ img[src*="/static/"] {
                 <div id="editExamplesContainer" class="examples-container">
                     <div class="examples-header">
                         <span>Content Examples</span>
-                        <button type="button" class="add-example-btn" onclick="addEditExample()">
-                            <img src="/static/plus-solid.svg" width="12" height="12" alt="Add"> Add Example
-                        </button>
                     </div>
                     <div id="editExamplesList" class="examples-list">
                         <!-- Examples will be added here -->
                     </div>
+                    <button type="button" class="add-example-btn" onclick="addEditExample()">
+                        <img src="/static/plus-solid.svg" width="12" height="12" alt="Add"> Add Example
+                    </button>
                 </div>
             </div>
         </div>
@@ -1964,6 +1968,7 @@ function updateSidebarForRepository() {
     const addItemText = document.getElementById('addItemText');
     const searchInput = document.getElementById('searchInput');
     const emptyStateIcon = document.getElementById('emptyStateIcon');
+    
     const emptyStateText = document.getElementById('emptyStateText');
     const mostUsedTitle = document.getElementById('mostUsedTitle');
     const noUsageText = document.getElementById('noUsageText');
@@ -1984,11 +1989,11 @@ function updateSidebarForRepository() {
         addItemText.textContent = 'Source';
         addItemIcon.src = '/static/plus-solid.svg';
         searchInput.placeholder = 'Search sources...';
-        emptyStateIcon.src = '/static/link-solid.svg';
+        emptyStateIcon.src = '/static/link-solid-full.svg';
         emptyStateText.textContent = 'Select a source or folder to view its contents';
         mostUsedTitle.textContent = 'Most used sources';
-        noUsageText.textContent = 'No sources have been copied yet';
-        noUsageSubtext.textContent = 'Start copying sources to see usage statistics';
+        noUsageText.textContent = 'No sources have been referenced yet';
+        noUsageSubtext.textContent = 'Start referencing sources in prompts to see usage statistics';
     }
 }
 
@@ -2130,17 +2135,23 @@ function getSourceContent(sourceName) {
         return null;
     }
     
-    // Return the first example's content as a formatted string
-    const firstExample = source.examples[0];
+    // Return all examples' content as a formatted string
     let content = '';
     
-    if (firstExample.title) {
-        content += firstExample.title + '\n\n';
-    }
-    
-    firstExample.contentTypes.forEach(ct => {
-        if (ct.label && ct.text) {
-            content += `${ct.label}: ${ct.text}\n`;
+    source.examples.forEach((example, index) => {
+        if (example.title) {
+            content += `${example.title}\n\n`;
+        }
+        
+        example.contentTypes.forEach(ct => {
+            if (ct.label && ct.text) {
+                content += `${ct.label}: ${ct.text}\n`;
+            }
+        });
+        
+        // Add separator between examples (except for the last one)
+        if (index < source.examples.length - 1) {
+            content += '\n---\n\n';
         }
     });
     
@@ -2218,7 +2229,7 @@ function getItemsInFolder(folderId, includeSubfolders = false, filteredItems = n
     let folderItems = itemsToSearch.filter(i => i.folderId === folderId);
     
     if (includeSubfolders) {
-        const subfolders = data.folders.filter(f => f.parentId === folderId);
+        const subfolders = data.folders.filter(f => f.parentId === folderId && f.repository === activeRepository);
         subfolders.forEach(subfolder => {
             folderItems = folderItems.concat(getItemsInFolder(subfolder.id, true, itemsToSearch));
         });
@@ -2243,8 +2254,8 @@ function renderItemList() {
 function renderContainer(parentId, filteredItems, level = 0) {
     let html = '';
     
-    // Get folders and items for this container
-    const folders = data.folders.filter(f => f.parentId === parentId);
+    // Get folders and items for this container (filtered by repository)
+    const folders = data.folders.filter(f => f.parentId === parentId && f.repository === activeRepository);
     const items = filteredItems.filter(i => i.folderId === parentId);
     
     // Create combined list of items with their types and orders
@@ -2295,14 +2306,10 @@ function renderFolderDropZone(parentId) {
 function renderItemElement(item) {
     const isSelected = selectedItem && selectedItem.id === item.id;
     const itemType = activeRepository === 'prompts' ? 'prompt' : 'source';
-    const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid.svg';
+    const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid-full.svg';
     
     let badges = '';
-    if (activeRepository === 'prompts') {
-        if (item.hasVariables) {
-            badges += `<span class="variables-info">Variables</span>`;
-        }
-    } else {
+    if (activeRepository === 'sources') {
         if (item.examples && item.examples.length > 0) {
             badges += `<span class="examples-badge">${item.examples.length}</span>`;
         }
@@ -2354,9 +2361,19 @@ function renderFolderItem(folder, filteredItems, level) {
 
 function renderMostUsed() {
     const items = activeRepository === 'prompts' ? data.prompts : data.sources;
-    const mostUsedItems = [...items]
-        .filter(item => item.usageCount > 0)
-        .sort((a, b) => b.usageCount - a.usageCount);
+    let mostUsedItems;
+    
+    if (activeRepository === 'prompts') {
+        // For prompts, use usageCount (copy count)
+        mostUsedItems = [...items]
+            .filter(item => item.usageCount > 0)
+            .sort((a, b) => b.usageCount - a.usageCount);
+    } else {
+        // For sources, use referenceCount (how many prompts reference them)
+        mostUsedItems = [...items]
+            .filter(item => item.referenceCount > 0)
+            .sort((a, b) => b.referenceCount - a.referenceCount);
+    }
     
     const container = document.getElementById('mostUsedList');
     const noUsageState = document.getElementById('noUsageState');
@@ -2375,7 +2392,9 @@ function renderMostUsed() {
         const preview = activeRepository === 'prompts' 
             ? item.text.substring(0, 100) + (item.text.length > 100 ? '...' : '')
             : (item.examples && item.examples.length > 0 ? `${item.examples.length} examples` : 'No examples');
-        const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid.svg';
+        const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid-full.svg';
+        const countLabel = activeRepository === 'prompts' ? 'uses' : 'refs';
+        const countValue = activeRepository === 'prompts' ? item.usageCount : item.referenceCount;
         
         html += `
             <div class="most-used-item" onclick="selectItemFromMostUsed('${item.id}')">
@@ -2388,7 +2407,7 @@ function renderMostUsed() {
                     </div>
                 </div>
                 <div class="most-used-actions">
-                    <span class="usage-count">${item.usageCount} uses</span>
+                    <span class="usage-count">${countValue} ${countLabel}</span>
                     <button class="btn btn-outline" onclick="event.stopPropagation(); copyItemById('${item.id}')">
                         <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
                     </button>
@@ -2576,7 +2595,7 @@ function isItemInFolder(itemId, folderId) {
     
     // Check if item is in any subfolder of this folder
     function checkSubfolders(parentId) {
-        const subfolders = data.folders.filter(f => f.parentId === parentId);
+        const subfolders = data.folders.filter(f => f.parentId === parentId && f.repository === activeRepository);
         for (const subfolder of subfolders) {
             if (item.folderId === subfolder.id) return true;
             if (checkSubfolders(subfolder.id)) return true;
@@ -2719,7 +2738,7 @@ function showItemDetails() {
     
     document.getElementById('itemDetails').classList.remove('hidden');
     document.getElementById('folderDetails').classList.add('hidden');
-    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
     
     document.getElementById('itemTitle').textContent = selectedItem.name;
     
@@ -2760,7 +2779,11 @@ function showItemDetails() {
         }
     } else {
         if (selectedItem.usageCount > 0) {
-            badges += `<span class="source-badge usage-info">Used ${selectedItem.usageCount} times</span>`;
+            badges += `<span class="source-badge usage-info">Copied ${selectedItem.usageCount} times</span>`;
+        }
+        
+        if (selectedItem.referenceCount > 0) {
+            badges += `<span class="source-badge usage-info">Referenced ${selectedItem.referenceCount} times</span>`;
         }
         
         if (selectedItem.examples && selectedItem.examples.length > 0) {
@@ -2824,6 +2847,7 @@ function showFolderDetails() {
     
     document.getElementById('itemDetails').classList.add('hidden');
     document.getElementById('folderDetails').classList.remove('hidden');
+    
     document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('folderTitle').textContent = folder.name + ' Folder';
@@ -2842,18 +2866,18 @@ function showFolderDetails() {
             const versionBadge = item.versions && item.versions.length > 1 
                 ? `<span class="version-badge">v${item.currentVersion}</span>`
                 : '';
-            const variablesBadge = item.hasVariables 
-                ? `<span class="variables-info">Variables</span>` 
-                : '';
-            extraBadges = versionBadge + variablesBadge;
+            extraBadges = versionBadge;
         } else {
             const examplesBadge = item.examples && item.examples.length > 0 
                 ? `<span class="examples-badge">${item.examples.length}</span>` 
                 : '';
-            extraBadges = examplesBadge;
+            const refBadge = item.referenceCount > 0 
+                ? `<span class="usage-badge">${item.referenceCount} refs</span>`
+                : '';
+            extraBadges = examplesBadge + refBadge;
         }
         
-        const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid.svg';
+        const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid-full.svg';
         const itemClass = activeRepository === 'prompts' ? 'folder-prompt-item' : 'folder-source-item';
         const infoClass = activeRepository === 'prompts' ? 'folder-prompt-info' : 'folder-source-info';
             
@@ -3132,7 +3156,8 @@ async function addFolder(event) {
         method: 'POST',
         body: JSON.stringify({ 
             name,
-            parentId: selectedFolder 
+            parentId: selectedFolder,
+            repository: activeRepository
         })
     });
     
