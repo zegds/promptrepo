@@ -590,7 +590,7 @@ body {
   background-color: #fee2e2;
 }
 
-.character-count-info {
+.word-count-info {
   color: #64748b;
   background-color: #f1f5f9;
 }
@@ -651,19 +651,19 @@ body {
   position: relative;
   width: 80px;
   height: 40px;
-  background-color: #059669;
+  background-color: #dc2626;
   border-radius: 20px;
   cursor: pointer;
   transition: background-color 0.3s ease;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
+  justify-content: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-.toggle-switch.ai-mode {
-  background-color: #dc2626;
+.toggle-switch.human-mode {
+  background-color: #059669;
 }
 
 .toggle-switch::before {
@@ -677,10 +677,24 @@ body {
   border-radius: 50%;
   transition: transform 0.3s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 2;
 }
 
-.toggle-switch.ai-mode::before {
+.toggle-switch.human-mode::before {
   transform: translateX(40px);
+}
+
+.toggle-labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  z-index: 1;
 }
 
 .toggle-label {
@@ -689,7 +703,6 @@ body {
   color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  z-index: 1;
 }
 
 .main-editor {
@@ -1964,11 +1977,11 @@ img[src*="/static/"] {
         </header>
         <div class="content-area">
             <div class="tabs">
-                <div class="tab-list">
+                <div class="tab-list" id="tabList">
                     <button class="tab-trigger active" data-tab="repository" onclick="switchTab('repository')">
                         Repository
                     </button>
-                    <button class="tab-trigger" data-tab="most-used" onclick="switchTab('most-used')">
+                    <button class="tab-trigger" data-tab="most-used" onclick="switchTab('most-used')" id="mostUsedTab">
                         Most used
                     </button>
                 </div>
@@ -2023,22 +2036,24 @@ img[src*="/static/"] {
                         <div id="changelogEditor" class="changelog-editor">
                             <div class="editor-controls">
                                 <div class="author-toggle">
-                                    <span class="current-mode human" id="currentMode">Human</span>
+                                    <span class="current-mode ai" id="currentMode">AI</span>
                                     <div class="toggle-switch" id="authorToggle" onclick="toggleAuthorMode()">
-                                        <span class="toggle-label">AI</span>
-                                        <span class="toggle-label">Human</span>
+                                        <div class="toggle-labels">
+                                            <span class="toggle-label">AI</span>
+                                            <span class="toggle-label">Human</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="main-editor">
-                                <textarea id="changelogTextarea" class="editor-textarea human-mode" placeholder="Start writing your content here..."></textarea>
+                                <textarea id="changelogTextarea" class="editor-textarea ai-mode" placeholder="Start writing your content here..."></textarea>
                                 <div class="editor-actions">
                                     <div class="editor-stats">
-                                        <span id="characterCount">0 characters</span>
+                                        <span id="wordCount">0 words</span>
                                         <span id="aiPercentage">0% AI</span>
                                     </div>
-                                    <button id="captureBtn" class="capture-btn human-mode" onclick="captureContent()">
-                                        Capture Human Content
+                                    <button id="captureBtn" class="capture-btn ai-mode" onclick="captureContent()">
+                                        Capture AI Content
                                     </button>
                                 </div>
                             </div>
@@ -2324,7 +2339,7 @@ let deleteTarget = null;
 let folderExpandTimeout = null;
 let dragPreview = null;
 let lastDragEndTime = 0;
-let currentAuthorMode = 'human'; // 'human' or 'ai'
+let currentAuthorMode = 'ai'; // Default to AI mode
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -2432,6 +2447,7 @@ function updateSidebarForRepository() {
     const mostUsedTitle = document.getElementById('mostUsedTitle');
     const noUsageText = document.getElementById('noUsageText');
     const noUsageSubtext = document.getElementById('noUsageSubtext');
+    const mostUsedTab = document.getElementById('mostUsedTab');
     
     if (activeRepository === 'prompts') {
         sidebarTitle.textContent = 'Prompt assets';
@@ -2444,10 +2460,11 @@ function updateSidebarForRepository() {
         noUsageText.textContent = 'No prompts have been copied yet';
         noUsageSubtext.textContent = 'Start copying prompts to see usage statistics';
         
-        // Show search and folder controls
+        // Show search, folder controls, and most used tab
         searchContainer.style.display = 'block';
         actionButtons.style.display = 'flex';
         addFolderBtn.style.display = 'inline-flex';
+        mostUsedTab.style.display = 'block';
     } else if (activeRepository === 'sources') {
         sidebarTitle.textContent = 'Source assets';
         addItemText.textContent = 'Source';
@@ -2459,10 +2476,11 @@ function updateSidebarForRepository() {
         noUsageText.textContent = 'No sources have been referenced yet';
         noUsageSubtext.textContent = 'Start referencing sources in prompts to see usage statistics';
         
-        // Show search and folder controls
+        // Show search, folder controls, and most used tab
         searchContainer.style.display = 'block';
         actionButtons.style.display = 'flex';
         addFolderBtn.style.display = 'inline-flex';
+        mostUsedTab.style.display = 'block';
     } else if (activeRepository === 'changeLogs') {
         sidebarTitle.textContent = 'Change logs';
         addItemText.textContent = 'Change Log';
@@ -2470,13 +2488,16 @@ function updateSidebarForRepository() {
         searchInput.placeholder = 'Search change logs...';
         emptyStateIcon.src = '/static/code-compare-solid-full.svg';
         emptyStateText.textContent = 'Select a change log to view its contents';
-        mostUsedTitle.textContent = 'Recent change logs';
-        noUsageText.textContent = 'No change logs created yet';
-        noUsageSubtext.textContent = 'Start creating change logs to track your writing process';
         
-        // Hide search and folder controls for change logs
+        // Hide search, folder controls, and most used tab for change logs
         searchContainer.style.display = 'none';
         actionButtons.style.display = 'none';
+        mostUsedTab.style.display = 'none';
+        
+        // Switch to repository tab if currently on most used
+        if (activeTab === 'most-used') {
+            switchTab('repository');
+        }
     }
 }
 
@@ -2523,14 +2544,14 @@ function toggleAuthorMode() {
     currentAuthorMode = currentAuthorMode === 'human' ? 'ai' : 'human';
     
     if (currentAuthorMode === 'ai') {
-        toggle.classList.add('ai-mode');
+        toggle.classList.remove('human-mode');
         currentModeEl.textContent = 'AI';
         currentModeEl.className = 'current-mode ai';
         textarea.className = 'editor-textarea ai-mode';
         captureBtn.textContent = 'Capture AI Content';
         captureBtn.className = 'capture-btn ai-mode';
     } else {
-        toggle.classList.remove('ai-mode');
+        toggle.classList.add('human-mode');
         currentModeEl.textContent = 'Human';
         currentModeEl.className = 'current-mode human';
         textarea.className = 'editor-textarea human-mode';
@@ -2577,18 +2598,23 @@ function captureContent() {
 function updateChangelogStats() {
     if (!selectedItem || activeRepository !== 'changeLogs') return;
     
-    const characterCount = document.getElementById('characterCount');
+    const wordCount = document.getElementById('wordCount');
     const aiPercentage = document.getElementById('aiPercentage');
     const textarea = document.getElementById('changelogTextarea');
     
-    const currentLength = textarea.value.length;
-    characterCount.textContent = `${currentLength} characters`;
+    const currentWords = countWords(textarea.value);
+    wordCount.textContent = `${currentWords} words`;
     
     if (selectedItem.entries && selectedItem.entries.length > 0) {
         aiPercentage.textContent = `${selectedItem.aiPercentage}% AI`;
     } else {
         aiPercentage.textContent = '0% AI';
     }
+}
+
+function countWords(text) {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
 }
 
 // Variables functionality
@@ -3015,11 +3041,8 @@ function renderMostUsed() {
             .filter(item => item.referenceCount > 0)
             .sort((a, b) => b.referenceCount - a.referenceCount);
     } else {
-        items = data.changeLogs;
-        // For change logs, show most recent
-        mostUsedItems = [...items]
-            .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt))
-            .slice(0, 10);
+        // Change logs don't have most used - this shouldn't be called
+        return;
     }
     
     const container = document.getElementById('mostUsedList');
@@ -3048,11 +3071,6 @@ function renderMostUsed() {
             iconSrc = '/static/link-solid-full.svg';
             countLabel = 'refs';
             countValue = item.referenceCount;
-        } else {
-            preview = `${item.aiPercentage}% AI content, ${item.totalCharacters} characters`;
-            iconSrc = '/static/code-compare-solid-full.svg';
-            countLabel = 'entries';
-            countValue = item.entries ? item.entries.length : 0;
         }
         
         html += `
@@ -3067,11 +3085,9 @@ function renderMostUsed() {
                 </div>
                 <div class="most-used-actions">
                     <span class="usage-count">${countValue} ${countLabel}</span>
-                    ${activeRepository !== 'changeLogs' ? `
-                        <button class="btn btn-outline" onclick="event.stopPropagation(); copyItemById('${item.id}')">
-                            <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
-                        </button>
-                    ` : ''}
+                    <button class="btn btn-outline" onclick="event.stopPropagation(); copyItemById('${item.id}')">
+                        <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
+                    </button>
                 </div>
             </div>
         `;
@@ -3509,8 +3525,8 @@ function showChangelogDetails() {
         badges += `<span class="changelog-badge ai-percentage-info">${selectedItem.aiPercentage}% AI</span>`;
     }
     
-    if (selectedItem.totalCharacters > 0) {
-        badges += `<span class="changelog-badge character-count-info">${selectedItem.totalCharacters} characters</span>`;
+    if (selectedItem.totalWords > 0) {
+        badges += `<span class="changelog-badge word-count-info">${selectedItem.totalWords} words</span>`;
     }
     
     badgesContainer.innerHTML = badges;
@@ -3521,7 +3537,7 @@ function showChangelogDetails() {
     // Update stats
     updateChangelogStats();
     
-    // Setup textarea listener for real-time character count
+    // Setup textarea listener for real-time word count
     const textarea = document.getElementById('changelogTextarea');
     textarea.addEventListener('input', updateChangelogStats);
 }
@@ -3532,7 +3548,10 @@ function renderChangelogEntries() {
     const container = document.getElementById('changelogEntries');
     let html = '';
     
-    selectedItem.entries.forEach(entry => {
+    // Reverse the order so most recent entries appear at the top
+    const reversedEntries = [...selectedItem.entries].reverse();
+    
+    reversedEntries.forEach(entry => {
         const timestamp = new Date(entry.timestamp).toLocaleString();
         html += `
             <div class="changelog-entry ${entry.type}">
