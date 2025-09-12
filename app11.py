@@ -55,8 +55,8 @@ def load_data():
                         log['entries'] = []
                     if 'aiPercentage' not in log:
                         log['aiPercentage'] = 0
-                    if 'totalCharacters' not in log:
-                        log['totalCharacters'] = 0
+                    if 'totalWords' not in log:
+                        log['totalWords'] = 0
                 
                 # Ensure all folders have order field, parentId, and repository
                 for i, folder in enumerate(data.get('folders', [])):
@@ -128,23 +128,29 @@ def count_source_references(source_name, prompts):
     
     return count
 
+def count_words(text):
+    """Count words in text (split by spaces)"""
+    if not text:
+        return 0
+    return len(text.split())
+
 def calculate_ai_percentage(entries):
-    """Calculate the percentage of content written by AI"""
+    """Calculate the percentage of content written by AI based on word count"""
     if not entries:
         return 0
     
-    total_chars = 0
-    ai_chars = 0
+    total_words = 0
+    ai_words = 0
     
     for entry in entries:
         content = entry.get('content', '')
-        char_count = len(content)
-        total_chars += char_count
+        word_count = count_words(content)
+        total_words += word_count
         
         if entry.get('type') == 'ai':
-            ai_chars += char_count
+            ai_words += word_count
     
-    return round((ai_chars / total_chars * 100) if total_chars > 0 else 0, 1)
+    return round((ai_words / total_words * 100) if total_words > 0 else 0, 1)
 
 @app.route('/')
 def index():
@@ -159,10 +165,10 @@ def get_data():
     for source in data['sources']:
         source['referenceCount'] = count_source_references(source['name'], data['prompts'])
     
-    # Update AI percentages for change logs
+    # Update AI percentages and word counts for change logs
     for log in data['changeLogs']:
         log['aiPercentage'] = calculate_ai_percentage(log.get('entries', []))
-        log['totalCharacters'] = sum(len(entry.get('content', '')) for entry in log.get('entries', []))
+        log['totalWords'] = sum(count_words(entry.get('content', '')) for entry in log.get('entries', []))
     
     return jsonify(data)
 
@@ -243,7 +249,7 @@ def add_change_log():
         'entries': [],
         'order': max_order + 1,
         'aiPercentage': 0,
-        'totalCharacters': 0,
+        'totalWords': 0,
         'createdAt': now,
         'updatedAt': now
     }
@@ -271,7 +277,7 @@ def add_change_log_entry(log_id):
             log['entries'].append(new_entry)
             log['updatedAt'] = now
             log['aiPercentage'] = calculate_ai_percentage(log['entries'])
-            log['totalCharacters'] = sum(len(entry.get('content', '')) for entry in log['entries'])
+            log['totalWords'] = sum(count_words(entry.get('content', '')) for entry in log['entries'])
             break
     
     save_data(data)
