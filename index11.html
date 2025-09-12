@@ -115,12 +115,12 @@ body {
   margin-bottom: 8px;
 }
 
-.prompt-list, .source-list {
+.prompt-list, .source-list, .changelog-list {
   min-height: 20px;
 }
 
 /* Enhanced Drag and Drop Styles */
-.prompt-item, .folder-item, .source-item {
+.prompt-item, .folder-item, .source-item, .changelog-item {
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -133,21 +133,21 @@ body {
   border: 2px solid transparent;
 }
 
-.prompt-item:hover, .folder-item:hover, .source-item:hover {
+.prompt-item:hover, .folder-item:hover, .source-item:hover, .changelog-item:hover {
   background-color: #f1f5f9;
 }
 
-.prompt-item.selected, .folder-item.selected, .source-item.selected {
+.prompt-item.selected, .folder-item.selected, .source-item.selected, .changelog-item.selected {
   background-color: #e2e8f0;
 }
 
-.prompt-item i, .folder-item i, .source-item i {
+.prompt-item i, .folder-item i, .source-item i, .changelog-item i {
   margin-right: 8px;
   font-size: 14px;
   color: #64748b;
 }
 
-.prompt-name, .folder-name, .source-name {
+.prompt-name, .folder-name, .source-name, .changelog-name {
   flex: 1;
   font-size: 14px;
   white-space: nowrap;
@@ -155,7 +155,7 @@ body {
   text-overflow: ellipsis;
 }
 
-.version-badge, .usage-badge, .examples-badge {
+.version-badge, .usage-badge, .examples-badge, .ai-badge {
   font-size: 11px;
   color: #64748b;
   background-color: #f1f5f9;
@@ -172,6 +172,11 @@ body {
 .examples-badge {
   color: #7c3aed;
   background-color: #ede9fe;
+}
+
+.ai-badge {
+  color: #dc2626;
+  background-color: #fee2e2;
 }
 
 .variables-info {
@@ -193,7 +198,8 @@ body {
 
 .prompt-item:hover .delete-btn,
 .folder-item:hover .delete-btn,
-.source-item:hover .delete-btn {
+.source-item:hover .delete-btn,
+.changelog-item:hover .delete-btn {
   opacity: 1;
 }
 
@@ -491,6 +497,307 @@ body {
 
 .tab-content.active {
   display: block;
+}
+
+/* Change Log Styles */
+.changelog-details {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.changelog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 24px;
+}
+
+.changelog-title-section {
+  flex: 1;
+}
+
+.changelog-title-section h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.changelog-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.changelog-badge {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.ai-percentage-info {
+  color: #dc2626;
+  background-color: #fee2e2;
+}
+
+.character-count-info {
+  color: #64748b;
+  background-color: #f1f5f9;
+}
+
+.changelog-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Change Log Editor */
+.changelog-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.author-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 60px;
+  height: 32px;
+  background-color: #059669;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.toggle-switch.ai-mode {
+  background-color: #dc2626;
+}
+
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 28px;
+  height: 28px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch.ai-mode::before {
+  transform: translateX(28px);
+}
+
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.toggle-label.left {
+  margin-left: 4px;
+}
+
+.toggle-label.right {
+  margin-right: 4px;
+}
+
+.current-mode {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.current-mode.human {
+  color: #059669;
+  background-color: #d1fae5;
+}
+
+.current-mode.ai {
+  color: #dc2626;
+  background-color: #fee2e2;
+}
+
+.main-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-textarea {
+  flex: 1;
+  min-height: 200px;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: none;
+  transition: border-color 0.2s;
+}
+
+.editor-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.editor-textarea.human-mode {
+  border-color: #059669;
+}
+
+.editor-textarea.ai-mode {
+  border-color: #dc2626;
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.capture-btn {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.capture-btn:hover {
+  background-color: #2563eb;
+}
+
+.capture-btn.human-mode {
+  background-color: #059669;
+}
+
+.capture-btn.human-mode:hover {
+  background-color: #047857;
+}
+
+.capture-btn.ai-mode {
+  background-color: #dc2626;
+}
+
+.capture-btn.ai-mode:hover {
+  background-color: #b91c1c;
+}
+
+/* Change Log Entries */
+.changelog-entries {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+
+.changelog-entry {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative;
+}
+
+.changelog-entry:last-child {
+  border-bottom: none;
+}
+
+.changelog-entry.human {
+  border-left: 4px solid #059669;
+  background-color: #f0fdf4;
+}
+
+.changelog-entry.ai {
+  border-left: 4px solid #dc2626;
+  background-color: #fef2f2;
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.entry-type {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.entry-type.human {
+  color: #059669;
+  background-color: #d1fae5;
+}
+
+.entry-type.ai {
+  color: #dc2626;
+  background-color: #fee2e2;
+}
+
+.entry-timestamp {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.entry-content {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.entry-content.human {
+  color: #047857;
+}
+
+.entry-content.ai {
+  color: #b91c1c;
 }
 
 /* Prompt Details */
@@ -958,18 +1265,18 @@ body {
 }
 
 /* Toggle Switch for Variables */
-.toggle-switch {
+.variables-toggle-switch {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.toggle-switch input[type="checkbox"] {
+.variables-toggle-switch input[type="checkbox"] {
   display: none;
 }
 
-.toggle-slider {
+.variables-toggle-slider {
   position: relative;
   width: 44px;
   height: 24px;
@@ -979,7 +1286,7 @@ body {
   transition: background-color 0.3s ease;
 }
 
-.toggle-slider::before {
+.variables-toggle-slider::before {
   content: '';
   position: absolute;
   top: 2px;
@@ -992,15 +1299,15 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
+.variables-toggle-switch input[type="checkbox"]:checked + .variables-toggle-slider {
   background-color: #3b82f6;
 }
 
-.toggle-switch input[type="checkbox"]:checked + .toggle-slider::before {
+.variables-toggle-switch input[type="checkbox"]:checked + .variables-toggle-slider::before {
   transform: translateX(20px);
 }
 
-.toggle-label {
+.variables-toggle-label {
   font-size: 14px;
   font-weight: 500;
   color: #374151;
@@ -1390,13 +1697,13 @@ body {
     width: 100%;
   }
 
-  .prompt-header, .source-header {
+  .prompt-header, .source-header, .changelog-header {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
 
-  .prompt-actions, .source-actions {
+  .prompt-actions, .source-actions, .changelog-actions {
     justify-content: flex-start;
   }
 
@@ -1437,6 +1744,24 @@ body {
     padding: 6px 12px;
     font-size: 13px;
   }
+
+  .editor-controls {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .author-toggle {
+    justify-content: center;
+  }
+
+  .editor-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .editor-stats {
+    justify-content: center;
+  }
 }
 
 img {
@@ -1471,7 +1796,8 @@ img[src*="/static/"] {
 /* File and folder icons with proper spacing */
 .prompt-item img[src*="file-lines"],
 .folder-item img[src*="folder"],
-.source-item img[src*="link"] {
+.source-item img[src*="link"],
+.changelog-item img[src*="code-compare"] {
   margin-right: 8px;
   width: 14px !important;
   height: 14px !important;
@@ -1541,16 +1867,16 @@ img[src*="/static/"] {
             <div class="app-title">
                 <span id="sidebarTitle">Prompt assets</span>
             </div>
-            <div class="action-buttons">
+            <div class="action-buttons" id="actionButtons">
                 <button id="addItemBtn" class="btn btn-outline" onclick="showAddModal()">
                     <img id="addItemIcon" src="/static/plus-solid.svg" width="14" height="14" alt="Plus"> 
                     <span id="addItemText">Prompt</span>
                 </button>
-                <button class="btn btn-outline" onclick="showAddFolderModal()">
+                <button id="addFolderBtn" class="btn btn-outline" onclick="showAddFolderModal()">
                     <img src="/static/folder-plus-solid.svg" width="14" height="14" alt="Folder Plus"> Folder
                 </button>
             </div>
-            <div class="search-container">
+            <div class="search-container" id="searchContainer">
                 <img src="/static/magnifying-glass-solid.svg" class="search-icon" width="14" height="14" alt="Search">
                 <input type="text" id="searchInput" placeholder="Search..." oninput="handleSearch()">
             </div>
@@ -1578,6 +1904,10 @@ img[src*="/static/"] {
                 <div class="header-tab" data-repository="sources" onclick="switchRepository('sources')">
                     <img src="/static/link-solid-full.svg" width="16" height="16" alt="Link">
                     <span>Source Repository</span>
+                </div>
+                <div class="header-tab" data-repository="changeLogs" onclick="switchRepository('changeLogs')">
+                    <img src="/static/code-compare-solid-full.svg" width="16" height="16" alt="Change Log">
+                    <span>Change Log</span>
                 </div>
             </div>
         </header>
@@ -1624,6 +1954,46 @@ img[src*="/static/"] {
                         <h2 id="folderTitle"></h2>
                         <div id="folderItems" class="folder-prompts"></div>
                     </div>
+                    <div id="changelogDetails" class="changelog-details hidden">
+                        <div id="changelogHeader" class="changelog-header">
+                            <div id="changelogTitleSection" class="changelog-title-section">
+                                <h2 id="changelogTitle"></h2>
+                                <div id="changelogBadges" class="changelog-badges"></div>
+                            </div>
+                            <div id="changelogActions" class="changelog-actions">
+                                <button class="btn btn-outline" onclick="editChangelog()">
+                                    <img src="/static/pen-to-square-solid.svg" width="14" height="14" alt="Edit"> Edit
+                                </button>
+                                <button class="btn btn-outline" onclick="deleteCurrentChangelog()">
+                                    <img src="/static/trash-solid.svg" width="14" height="14" alt="Delete"> Delete
+                                </button>
+                            </div>
+                        </div>
+                        <div id="changelogEditor" class="changelog-editor">
+                            <div class="editor-controls">
+                                <div class="author-toggle">
+                                    <span class="current-mode human" id="currentMode">Human</span>
+                                    <div class="toggle-switch" id="authorToggle" onclick="toggleAuthorMode()">
+                                        <span class="toggle-label left">AI</span>
+                                        <span class="toggle-label right">Human</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="main-editor">
+                                <textarea id="changelogTextarea" class="editor-textarea human-mode" placeholder="Start writing your content here..."></textarea>
+                                <div class="editor-actions">
+                                    <div class="editor-stats">
+                                        <span id="characterCount">0 characters</span>
+                                        <span id="aiPercentage">0% AI</span>
+                                    </div>
+                                    <button id="captureBtn" class="capture-btn human-mode" onclick="captureContent()">
+                                        Capture Human Content
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="changelogEntries" class="changelog-entries"></div>
+                        </div>
+                    </div>
                     <div id="emptyState" class="empty-state">
                         <img id="emptyStateIcon" src="/static/database-solid.svg" width="16" height="16" alt="Database" class="empty-icon">
                         <p id="emptyStateText">Select an item or folder to view its contents</p>
@@ -1662,10 +2032,10 @@ img[src*="/static/"] {
                     <input type="text" id="promptName" required>
                 </div>
                 <div class="form-group">
-                    <div class="toggle-switch">
+                    <div class="variables-toggle-switch">
                         <input type="checkbox" id="variablesToggle" onchange="toggleVariablesMode()">
-                        <label for="variablesToggle" class="toggle-slider"></label>
-                        <label for="variablesToggle" class="toggle-label">Enable Variables</label>
+                        <label for="variablesToggle" class="variables-toggle-slider"></label>
+                        <label for="variablesToggle" class="variables-toggle-label">Enable Variables</label>
                     </div>
                     <div id="variablesHelp" class="variables-help hidden">
                         Use [variable_name] for inputs and {source_name} to pull source content
@@ -1727,6 +2097,29 @@ img[src*="/static/"] {
     </div>
 </div>
 
+<div id="addChangelogModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Change Log</h3>
+            <button class="modal-close" onclick="closeModal('addChangelogModal')">&times;</button>
+        </div>
+        <form onsubmit="addChangelog(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="changelogName">Change Log Name</label>
+                    <input type="text" id="changelogName" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addChangelogModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Create Change Log
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="addFolderModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1762,10 +2155,10 @@ img[src*="/static/"] {
                 <input type="text" id="editPromptName">
             </div>
             <div class="form-group">
-                <div class="toggle-switch">
+                <div class="variables-toggle-switch">
                     <input type="checkbox" id="editVariablesToggle" onchange="toggleEditVariablesMode()">
-                    <label for="editVariablesToggle" class="toggle-slider"></label>
-                    <label for="editVariablesToggle" class="toggle-label">Enable Variables</label>
+                    <label for="editVariablesToggle" class="variables-toggle-slider"></label>
+                    <label for="editVariablesToggle" class="variables-toggle-label">Enable Variables</label>
                 </div>
                 <div id="editVariablesHelp" class="variables-help hidden">
                     Use [variable_name] for inputs and {source_name} to pull source content
@@ -1828,6 +2221,29 @@ img[src*="/static/"] {
     </div>
 </div>
 
+<div id="editChangelogModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Change Log</h3>
+            <button class="modal-close" onclick="closeModal('editChangelogModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="editChangelogName">Change Log Name</label>
+                <input type="text" id="editChangelogName">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('editChangelogModal')">
+                <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete"> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveChangelogEdit()">
+                <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="deleteModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1862,18 +2278,19 @@ img[src*="/static/"] {
 
 <script>
 // Global state
-let data = { prompts: [], folders: [], sources: [] };
+let data = { prompts: [], folders: [], sources: [], changeLogs: [] };
 let selectedItem = null;
 let selectedFolder = null;
 let searchQuery = '';
 let activeTab = 'repository';
-let activeRepository = 'prompts'; // 'prompts' or 'sources'
+let activeRepository = 'prompts'; // 'prompts', 'sources', or 'changeLogs'
 let draggedItem = null;
 let draggedType = null;
 let deleteTarget = null;
 let folderExpandTimeout = null;
 let dragPreview = null;
 let lastDragEndTime = 0;
+let currentAuthorMode = 'human'; // 'human' or 'ai'
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -1964,11 +2381,13 @@ function switchRepository(repository) {
 function updateSidebarForRepository() {
     const sidebarTitle = document.getElementById('sidebarTitle');
     const addItemBtn = document.getElementById('addItemBtn');
+    const addFolderBtn = document.getElementById('addFolderBtn');
     const addItemIcon = document.getElementById('addItemIcon');
     const addItemText = document.getElementById('addItemText');
     const searchInput = document.getElementById('searchInput');
+    const searchContainer = document.getElementById('searchContainer');
+    const actionButtons = document.getElementById('actionButtons');
     const emptyStateIcon = document.getElementById('emptyStateIcon');
-    
     const emptyStateText = document.getElementById('emptyStateText');
     const mostUsedTitle = document.getElementById('mostUsedTitle');
     const noUsageText = document.getElementById('noUsageText');
@@ -1984,7 +2403,12 @@ function updateSidebarForRepository() {
         mostUsedTitle.textContent = 'Most used prompts';
         noUsageText.textContent = 'No prompts have been copied yet';
         noUsageSubtext.textContent = 'Start copying prompts to see usage statistics';
-    } else {
+        
+        // Show search and folder controls
+        searchContainer.style.display = 'block';
+        actionButtons.style.display = 'flex';
+        addFolderBtn.style.display = 'inline-flex';
+    } else if (activeRepository === 'sources') {
         sidebarTitle.textContent = 'Source assets';
         addItemText.textContent = 'Source';
         addItemIcon.src = '/static/plus-solid.svg';
@@ -1994,6 +2418,104 @@ function updateSidebarForRepository() {
         mostUsedTitle.textContent = 'Most used sources';
         noUsageText.textContent = 'No sources have been referenced yet';
         noUsageSubtext.textContent = 'Start referencing sources in prompts to see usage statistics';
+        
+        // Show search and folder controls
+        searchContainer.style.display = 'block';
+        actionButtons.style.display = 'flex';
+        addFolderBtn.style.display = 'inline-flex';
+    } else if (activeRepository === 'changeLogs') {
+        sidebarTitle.textContent = 'Change logs';
+        addItemText.textContent = 'Change Log';
+        addItemIcon.src = '/static/plus-solid.svg';
+        searchInput.placeholder = 'Search change logs...';
+        emptyStateIcon.src = '/static/code-compare-solid-full.svg';
+        emptyStateText.textContent = 'Select a change log to view its contents';
+        mostUsedTitle.textContent = 'Recent change logs';
+        noUsageText.textContent = 'No change logs created yet';
+        noUsageSubtext.textContent = 'Start creating change logs to track your writing process';
+        
+        // Hide search and folder controls for change logs
+        searchContainer.style.display = 'none';
+        actionButtons.style.display = 'flex';
+        addFolderBtn.style.display = 'none';
+    }
+}
+
+// Change Log Functions
+function toggleAuthorMode() {
+    const toggle = document.getElementById('authorToggle');
+    const currentModeEl = document.getElementById('currentMode');
+    const textarea = document.getElementById('changelogTextarea');
+    const captureBtn = document.getElementById('captureBtn');
+    
+    currentAuthorMode = currentAuthorMode === 'human' ? 'ai' : 'human';
+    
+    if (currentAuthorMode === 'ai') {
+        toggle.classList.add('ai-mode');
+        currentModeEl.textContent = 'AI';
+        currentModeEl.className = 'current-mode ai';
+        textarea.className = 'editor-textarea ai-mode';
+        captureBtn.textContent = 'Capture AI Content';
+        captureBtn.className = 'capture-btn ai-mode';
+    } else {
+        toggle.classList.remove('ai-mode');
+        currentModeEl.textContent = 'Human';
+        currentModeEl.className = 'current-mode human';
+        textarea.className = 'editor-textarea human-mode';
+        captureBtn.textContent = 'Capture Human Content';
+        captureBtn.className = 'capture-btn human-mode';
+    }
+}
+
+function captureContent() {
+    const textarea = document.getElementById('changelogTextarea');
+    const content = textarea.value.trim();
+    
+    if (!content) {
+        showToast('Please enter some content to capture');
+        return;
+    }
+    
+    if (!selectedItem) {
+        showToast('Please select a change log first');
+        return;
+    }
+    
+    // Add entry to change log
+    apiCall(`/api/change-logs/${selectedItem.id}/entries`, {
+        method: 'POST',
+        body: JSON.stringify({
+            type: currentAuthorMode,
+            content: content
+        })
+    }).then(result => {
+        if (result && result.success) {
+            // Don't clear the textarea - keep the content as requested
+            loadData().then(() => {
+                // Update selected item
+                selectedItem = data.changeLogs.find(log => log.id === selectedItem.id);
+                showChangelogDetails();
+                updateChangelogStats();
+            });
+            showToast(`${currentAuthorMode === 'ai' ? 'AI' : 'Human'} content captured`);
+        }
+    });
+}
+
+function updateChangelogStats() {
+    if (!selectedItem || activeRepository !== 'changeLogs') return;
+    
+    const characterCount = document.getElementById('characterCount');
+    const aiPercentage = document.getElementById('aiPercentage');
+    const textarea = document.getElementById('changelogTextarea');
+    
+    const currentLength = textarea.value.length;
+    characterCount.textContent = `${currentLength} characters`;
+    
+    if (selectedItem.entries && selectedItem.entries.length > 0) {
+        aiPercentage.textContent = `${selectedItem.aiPercentage}% AI`;
+    } else {
+        aiPercentage.textContent = '0% AI';
     }
 }
 
@@ -2053,7 +2575,7 @@ function parseSources(text) {
         });
     }
     
-    return sources;
+    return variables;
 }
 
 function parseAllVariables(text) {
@@ -2199,7 +2721,15 @@ function handleSearch() {
 }
 
 function getFilteredItems() {
-    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    let items;
+    if (activeRepository === 'prompts') {
+        items = data.prompts;
+    } else if (activeRepository === 'sources') {
+        items = data.sources;
+    } else {
+        items = data.changeLogs;
+    }
+    
     if (!searchQuery) return items;
     
     const nameMatches = items.filter(item => 
@@ -2210,7 +2740,7 @@ function getFilteredItems() {
     return items.filter(item => {
         if (activeRepository === 'prompts') {
             return item.text.toLowerCase().includes(searchQuery.toLowerCase());
-        } else {
+        } else if (activeRepository === 'sources') {
             // Search in source examples
             return item.examples && item.examples.some(example => 
                 example.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -2218,13 +2748,26 @@ function getFilteredItems() {
                     ct.text.toLowerCase().includes(searchQuery.toLowerCase())
                 )
             );
+        } else {
+            // Search in change log entries
+            return item.entries && item.entries.some(entry =>
+                entry.content.toLowerCase().includes(searchQuery.toLowerCase())
+            );
         }
     });
 }
 
 // Helper function to get all items in a folder (including subfolders)
 function getItemsInFolder(folderId, includeSubfolders = false, filteredItems = null) {
-    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    let items;
+    if (activeRepository === 'prompts') {
+        items = data.prompts;
+    } else if (activeRepository === 'sources') {
+        items = data.sources;
+    } else {
+        return []; // Change logs don't have folders
+    }
+    
     const itemsToSearch = filteredItems || items;
     let folderItems = itemsToSearch.filter(i => i.folderId === folderId);
     
@@ -2241,8 +2784,33 @@ function getItemsInFolder(folderId, includeSubfolders = false, filteredItems = n
 // Render functions
 function renderItemList() {
     const container = document.getElementById('itemList');
-    const filteredItems = getFilteredItems();
     
+    if (activeRepository === 'changeLogs') {
+        // For change logs, render simple list without folders or drag-and-drop
+        const filteredItems = getFilteredItems();
+        let html = '';
+        
+        filteredItems.forEach(log => {
+            const isSelected = selectedItem && selectedItem.id === log.id;
+            html += `
+                <div class="changelog-item ${isSelected ? 'selected' : ''}" 
+                     onclick="selectItem('${log.id}')">
+                    <img src="/static/code-compare-solid-full.svg" width="14" height="14" alt="changelog">
+                    <span class="changelog-name">${escapeHtml(log.name)}</span>
+                    <span class="ai-badge">${log.aiPercentage}%</span>
+                    <button class="delete-btn" onclick="event.stopPropagation(); confirmDeleteItem('${log.id}', '${escapeHtml(log.name)}', 'changelog')">
+                        <img src="/static/xmark-solid.svg" width="12" height="12" alt="Delete">
+                    </button>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        return;
+    }
+    
+    // For prompts and sources, render with folders and drag-and-drop
+    const filteredItems = getFilteredItems();
     let html = '';
     html += renderContainer(null, filteredItems);
     container.innerHTML = html;
@@ -2360,19 +2928,26 @@ function renderFolderItem(folder, filteredItems, level) {
 }
 
 function renderMostUsed() {
-    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
-    let mostUsedItems;
+    let items, mostUsedItems;
     
     if (activeRepository === 'prompts') {
+        items = data.prompts;
         // For prompts, use usageCount (copy count)
         mostUsedItems = [...items]
             .filter(item => item.usageCount > 0)
             .sort((a, b) => b.usageCount - a.usageCount);
-    } else {
+    } else if (activeRepository === 'sources') {
+        items = data.sources;
         // For sources, use referenceCount (how many prompts reference them)
         mostUsedItems = [...items]
             .filter(item => item.referenceCount > 0)
             .sort((a, b) => b.referenceCount - a.referenceCount);
+    } else {
+        items = data.changeLogs;
+        // For change logs, show most recent
+        mostUsedItems = [...items]
+            .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt))
+            .slice(0, 10);
     }
     
     const container = document.getElementById('mostUsedList');
@@ -2389,12 +2964,24 @@ function renderMostUsed() {
     
     let html = '';
     mostUsedItems.forEach((item, index) => {
-        const preview = activeRepository === 'prompts' 
-            ? item.text.substring(0, 100) + (item.text.length > 100 ? '...' : '')
-            : (item.examples && item.examples.length > 0 ? `${item.examples.length} examples` : 'No examples');
-        const iconSrc = activeRepository === 'prompts' ? '/static/file-lines-solid.svg' : '/static/link-solid-full.svg';
-        const countLabel = activeRepository === 'prompts' ? 'uses' : 'refs';
-        const countValue = activeRepository === 'prompts' ? item.usageCount : item.referenceCount;
+        let preview, iconSrc, countLabel, countValue;
+        
+        if (activeRepository === 'prompts') {
+            preview = item.text.substring(0, 100) + (item.text.length > 100 ? '...' : '');
+            iconSrc = '/static/file-lines-solid.svg';
+            countLabel = 'uses';
+            countValue = item.usageCount;
+        } else if (activeRepository === 'sources') {
+            preview = (item.examples && item.examples.length > 0 ? `${item.examples.length} examples` : 'No examples');
+            iconSrc = '/static/link-solid-full.svg';
+            countLabel = 'refs';
+            countValue = item.referenceCount;
+        } else {
+            preview = `${item.aiPercentage}% AI content, ${item.totalCharacters} characters`;
+            iconSrc = '/static/code-compare-solid-full.svg';
+            countLabel = 'entries';
+            countValue = item.entries ? item.entries.length : 0;
+        }
         
         html += `
             <div class="most-used-item" onclick="selectItemFromMostUsed('${item.id}')">
@@ -2408,9 +2995,11 @@ function renderMostUsed() {
                 </div>
                 <div class="most-used-actions">
                     <span class="usage-count">${countValue} ${countLabel}</span>
-                    <button class="btn btn-outline" onclick="event.stopPropagation(); copyItemById('${item.id}')">
-                        <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
-                    </button>
+                    ${activeRepository !== 'changeLogs' ? `
+                        <button class="btn btn-outline" onclick="event.stopPropagation(); copyItemById('${item.id}')">
+                            <img src="/static/copy-solid.svg" width="14" height="14" alt="Copy">
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -2419,8 +3008,12 @@ function renderMostUsed() {
     container.innerHTML = html;
 }
 
-// Enhanced Drag and Drop Implementation
+// Enhanced Drag and Drop Implementation (only for prompts and sources)
 function setupDragAndDrop() {
+    if (activeRepository === 'changeLogs') {
+        return; // No drag and drop for change logs
+    }
+    
     const draggableItems = document.querySelectorAll('.prompt-item[draggable="true"], .folder-item[draggable="true"], .source-item[draggable="true"]');
     const dropZones = document.querySelectorAll('.drop-zone, .folder-drop-zone');
     const folderItems = document.querySelectorAll('.folder-item');
@@ -2586,7 +3179,15 @@ function wouldCreateCycle(folderId, targetParentId) {
 
 // Helper function to check if an item belongs to a folder (including nested folders)
 function isItemInFolder(itemId, folderId) {
-    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    let items;
+    if (activeRepository === 'prompts') {
+        items = data.prompts;
+    } else if (activeRepository === 'sources') {
+        items = data.sources;
+    } else {
+        return false; // Change logs don't have folders
+    }
+    
     const item = items.find(i => i.id === itemId);
     if (!item) return false;
     
@@ -2713,11 +3314,24 @@ async function handleFolderDrop(dropZone) {
 
 // Selection functions
 function selectItem(itemId) {
-    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    let items;
+    if (activeRepository === 'prompts') {
+        items = data.prompts;
+    } else if (activeRepository === 'sources') {
+        items = data.sources;
+    } else {
+        items = data.changeLogs;
+    }
+    
     selectedItem = items.find(i => i.id === itemId);
     selectedFolder = null;
     renderItemList();
-    showItemDetails();
+    
+    if (activeRepository === 'changeLogs') {
+        showChangelogDetails();
+    } else {
+        showItemDetails();
+    }
 }
 
 function selectItemFromMostUsed(itemId) {
@@ -2738,7 +3352,8 @@ function showItemDetails() {
     
     document.getElementById('itemDetails').classList.remove('hidden');
     document.getElementById('folderDetails').classList.add('hidden');
-    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('changelogDetails').classList.add('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('itemTitle').textContent = selectedItem.name;
     
@@ -2802,6 +3417,63 @@ function showItemDetails() {
     }
 }
 
+function showChangelogDetails() {
+    if (!selectedItem || activeRepository !== 'changeLogs') return;
+    
+    document.getElementById('itemDetails').classList.add('hidden');
+    document.getElementById('folderDetails').classList.add('hidden');
+    document.getElementById('changelogDetails').classList.remove('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+    
+    document.getElementById('changelogTitle').textContent = selectedItem.name;
+    
+    // Update badges
+    const badgesContainer = document.getElementById('changelogBadges');
+    let badges = '';
+    
+    if (selectedItem.aiPercentage > 0) {
+        badges += `<span class="changelog-badge ai-percentage-info">${selectedItem.aiPercentage}% AI</span>`;
+    }
+    
+    if (selectedItem.totalCharacters > 0) {
+        badges += `<span class="changelog-badge character-count-info">${selectedItem.totalCharacters} characters</span>`;
+    }
+    
+    badgesContainer.innerHTML = badges;
+    
+    // Render entries
+    renderChangelogEntries();
+    
+    // Update stats
+    updateChangelogStats();
+    
+    // Setup textarea listener for real-time character count
+    const textarea = document.getElementById('changelogTextarea');
+    textarea.addEventListener('input', updateChangelogStats);
+}
+
+function renderChangelogEntries() {
+    if (!selectedItem || !selectedItem.entries) return;
+    
+    const container = document.getElementById('changelogEntries');
+    let html = '';
+    
+    selectedItem.entries.forEach(entry => {
+        const timestamp = new Date(entry.timestamp).toLocaleString();
+        html += `
+            <div class="changelog-entry ${entry.type}">
+                <div class="entry-header">
+                    <span class="entry-type ${entry.type}">${entry.type.toUpperCase()}</span>
+                    <span class="entry-timestamp">${timestamp}</span>
+                </div>
+                <div class="entry-content ${entry.type}">${escapeHtml(entry.content)}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
 function renderSourceContent(source) {
     if (!source.examples || source.examples.length === 0) {
         return '<p>No examples available for this source.</p>';
@@ -2847,7 +3519,7 @@ function showFolderDetails() {
     
     document.getElementById('itemDetails').classList.add('hidden');
     document.getElementById('folderDetails').classList.remove('hidden');
-    
+    document.getElementById('changelogDetails').classList.add('hidden');
     document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('folderTitle').textContent = folder.name + ' Folder';
@@ -2906,6 +3578,7 @@ function showFolderDetails() {
 function showEmptyState() {
     document.getElementById('itemDetails').classList.add('hidden');
     document.getElementById('folderDetails').classList.add('hidden');
+    document.getElementById('changelogDetails').classList.add('hidden');
     document.getElementById('emptyState').classList.remove('hidden');
 }
 
@@ -2934,8 +3607,10 @@ function switchTab(tabName) {
 function showAddModal() {
     if (activeRepository === 'prompts') {
         showModal('addPromptModal');
-    } else {
+    } else if (activeRepository === 'sources') {
         showModal('addSourceModal');
+    } else {
+        showModal('addChangelogModal');
     }
 }
 
@@ -3147,6 +3822,24 @@ async function addSource(event) {
     }
 }
 
+async function addChangelog(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('changelogName').value;
+    
+    const result = await apiCall('/api/change-logs', {
+        method: 'POST',
+        body: JSON.stringify({ name })
+    });
+    
+    if (result) {
+        await loadData();
+        closeModal('addChangelogModal');
+        showToast('Change log created successfully');
+        document.getElementById('changelogName').value = '';
+    }
+}
+
 async function addFolder(event) {
     event.preventDefault();
     
@@ -3184,13 +3877,20 @@ function editItem() {
         }
         
         showModal('editPromptModal');
-    } else {
+    } else if (activeRepository === 'sources') {
         document.getElementById('editSourceName').value = selectedItem.name;
         document.getElementById('editSourceUrl').value = selectedItem.url || '';
         populateEditExamples(selectedItem.examples || []);
         
         showModal('editSourceModal');
     }
+}
+
+function editChangelog() {
+    if (!selectedItem || activeRepository !== 'changeLogs') return;
+    
+    document.getElementById('editChangelogName').value = selectedItem.name;
+    showModal('editChangelogModal');
 }
 
 async function saveEdit() {
@@ -3211,8 +3911,7 @@ async function saveEdit() {
         showToast('Prompt updated successfully');
         
         // Update selected item
-        const items = activeRepository === 'prompts' ? data.prompts : data.sources;
-        selectedItem = items.find(i => i.id === selectedItem.id);
+        selectedItem = data.prompts.find(i => i.id === selectedItem.id);
         showItemDetails();
     }
 }
@@ -3240,13 +3939,42 @@ async function saveSourceEdit() {
     }
 }
 
+async function saveChangelogEdit() {
+    if (!selectedItem) return;
+    
+    const name = document.getElementById('editChangelogName').value;
+    
+    const result = await apiCall(`/api/change-logs/${selectedItem.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name })
+    });
+    
+    if (result) {
+        await loadData();
+        closeModal('editChangelogModal');
+        showToast('Change log updated successfully');
+        
+        // Update selected item
+        selectedItem = data.changeLogs.find(log => log.id === selectedItem.id);
+        showChangelogDetails();
+    }
+}
+
 async function copyItem() {
     if (!selectedItem) return;
     await copyItemById(selectedItem.id);
 }
 
 async function copyItemById(itemId) {
-    const items = activeRepository === 'prompts' ? data.prompts : data.sources;
+    let items;
+    if (activeRepository === 'prompts') {
+        items = data.prompts;
+    } else if (activeRepository === 'sources') {
+        items = data.sources;
+    } else {
+        return; // Change logs can't be copied
+    }
+    
     const item = items.find(i => i.id === itemId);
     if (!item) return;
     
@@ -3308,8 +4036,20 @@ function confirmDeleteFolder(folderId, folderName) {
 
 function deleteCurrentItem() {
     if (!selectedItem) return;
-    const itemType = activeRepository === 'prompts' ? 'prompt' : 'source';
+    let itemType;
+    if (activeRepository === 'prompts') {
+        itemType = 'prompt';
+    } else if (activeRepository === 'sources') {
+        itemType = 'source';
+    } else {
+        itemType = 'changelog';
+    }
     confirmDeleteItem(selectedItem.id, selectedItem.name, itemType);
+}
+
+function deleteCurrentChangelog() {
+    if (!selectedItem || activeRepository !== 'changeLogs') return;
+    confirmDeleteItem(selectedItem.id, selectedItem.name, 'changelog');
 }
 
 async function confirmDelete() {
@@ -3322,6 +4062,10 @@ async function confirmDelete() {
         });
     } else if (deleteTarget.type === 'source') {
         result = await apiCall(`/api/sources/${deleteTarget.id}`, {
+            method: 'DELETE'
+        });
+    } else if (deleteTarget.type === 'changelog') {
+        result = await apiCall(`/api/change-logs/${deleteTarget.id}`, {
             method: 'DELETE'
         });
     } else {
