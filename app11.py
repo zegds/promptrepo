@@ -253,7 +253,7 @@ def add_change_log():
     return jsonify(new_log)
 
 @app.route('/api/change-logs/<log_id>/entries', methods=['POST'])
-def add_change_log_entry():
+def add_change_log_entry(log_id):
     """Add an entry to a change log"""
     data = load_data()
     entry_data = request.json
