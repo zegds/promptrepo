@@ -499,6 +499,54 @@ body {
   display: block;
 }
 
+/* Change Log Creation Form */
+.changelog-creation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 24px;
+}
+
+.changelog-creation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.changelog-creation-input {
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  transition: border-color 0.2s;
+}
+
+.changelog-creation-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.changelog-creation-btn {
+  padding: 12px 24px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.changelog-creation-btn:hover {
+  background-color: #2563eb;
+}
+
 /* Change Log Styles */
 .changelog-details {
   height: 100%;
@@ -558,83 +606,35 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .editor-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
   background-color: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .author-toggle {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.toggle-switch {
-  position: relative;
-  width: 60px;
-  height: 32px;
-  background-color: #059669;
-  border-radius: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-}
-
-.toggle-switch.ai-mode {
-  background-color: #dc2626;
-}
-
-.toggle-switch::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 28px;
-  height: 28px;
-  background-color: #ffffff;
-  border-radius: 50%;
-  transition: transform 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.toggle-switch.ai-mode::before {
-  transform: translateX(28px);
-}
-
-.toggle-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.toggle-label.left {
-  margin-left: 4px;
-}
-
-.toggle-label.right {
-  margin-right: 4px;
+  gap: 16px;
 }
 
 .current-mode {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  min-width: 80px;
+  text-align: center;
 }
 
 .current-mode.human {
@@ -647,6 +647,51 @@ body {
   background-color: #fee2e2;
 }
 
+.toggle-switch {
+  position: relative;
+  width: 80px;
+  height: 40px;
+  background-color: #059669;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch.ai-mode {
+  background-color: #dc2626;
+}
+
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch.ai-mode::before {
+  transform: translateX(40px);
+}
+
+.toggle-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 1;
+}
+
 .main-editor {
   flex: 1;
   display: flex;
@@ -656,11 +701,11 @@ body {
 
 .editor-textarea {
   flex: 1;
-  min-height: 200px;
-  padding: 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
+  min-height: 300px;
+  padding: 20px;
+  border: 3px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 16px;
   font-family: inherit;
   line-height: 1.6;
   resize: none;
@@ -684,29 +729,34 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 0;
 }
 
 .editor-stats {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   font-size: 14px;
   color: #64748b;
+  font-weight: 500;
 }
 
 .capture-btn {
   background-color: #3b82f6;
   color: #ffffff;
   border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .capture-btn:hover {
   background-color: #2563eb;
+  transform: translateY(-1px);
 }
 
 .capture-btn.human-mode {
@@ -727,15 +777,15 @@ body {
 
 /* Change Log Entries */
 .changelog-entries {
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: #ffffff;
 }
 
 .changelog-entry {
-  padding: 12px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid #f1f5f9;
   position: relative;
 }
@@ -745,12 +795,12 @@ body {
 }
 
 .changelog-entry.human {
-  border-left: 4px solid #059669;
+  border-left: 6px solid #059669;
   background-color: #f0fdf4;
 }
 
 .changelog-entry.ai {
-  border-left: 4px solid #dc2626;
+  border-left: 6px solid #dc2626;
   background-color: #fef2f2;
 }
 
@@ -758,16 +808,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .entry-type {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 2px 8px;
-  border-radius: 4px;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 6px;
 }
 
 .entry-type.human {
@@ -783,11 +833,12 @@ body {
 .entry-timestamp {
   font-size: 12px;
   color: #64748b;
+  font-weight: 500;
 }
 
 .entry-content {
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.6;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -1974,8 +2025,8 @@ img[src*="/static/"] {
                                 <div class="author-toggle">
                                     <span class="current-mode human" id="currentMode">Human</span>
                                     <div class="toggle-switch" id="authorToggle" onclick="toggleAuthorMode()">
-                                        <span class="toggle-label left">AI</span>
-                                        <span class="toggle-label right">Human</span>
+                                        <span class="toggle-label">AI</span>
+                                        <span class="toggle-label">Human</span>
                                     </div>
                                 </div>
                             </div>
@@ -1992,6 +2043,12 @@ img[src*="/static/"] {
                                 </div>
                             </div>
                             <div id="changelogEntries" class="changelog-entries"></div>
+                        </div>
+                    </div>
+                    <div id="changelogCreation" class="changelog-creation hidden">
+                        <div class="changelog-creation-form">
+                            <input type="text" id="changelogCreationInput" class="changelog-creation-input" placeholder="Enter change log name..." />
+                            <button class="changelog-creation-btn" onclick="createChangelogDirectly()">Create Change Log</button>
                         </div>
                     </div>
                     <div id="emptyState" class="empty-state">
@@ -2091,29 +2148,6 @@ img[src*="/static/"] {
                 <button type="button" class="btn btn-outline" onclick="closeModal('addSourceModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">
                     <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Save Source
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div id="addChangelogModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Add New Change Log</h3>
-            <button class="modal-close" onclick="closeModal('addChangelogModal')">&times;</button>
-        </div>
-        <form onsubmit="addChangelog(event)">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="changelogName">Change Log Name</label>
-                    <input type="text" id="changelogName" required>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeModal('addChangelogModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">
-                    <img src="/static/floppy-disk-solid.svg" width="14" height="14" alt="Save"> Create Change Log
                 </button>
             </div>
         </form>
@@ -2375,7 +2409,13 @@ function switchRepository(repository) {
     // Render content
     renderItemList();
     renderMostUsed();
-    showEmptyState();
+    
+    // Show appropriate state
+    if (activeRepository === 'changeLogs') {
+        showChangelogCreationState();
+    } else {
+        showEmptyState();
+    }
 }
 
 function updateSidebarForRepository() {
@@ -2436,12 +2476,44 @@ function updateSidebarForRepository() {
         
         // Hide search and folder controls for change logs
         searchContainer.style.display = 'none';
-        actionButtons.style.display = 'flex';
-        addFolderBtn.style.display = 'none';
+        actionButtons.style.display = 'none';
     }
 }
 
 // Change Log Functions
+function showChangelogCreationState() {
+    document.getElementById('itemDetails').classList.add('hidden');
+    document.getElementById('folderDetails').classList.add('hidden');
+    document.getElementById('changelogDetails').classList.add('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('changelogCreation').classList.remove('hidden');
+}
+
+function createChangelogDirectly() {
+    const input = document.getElementById('changelogCreationInput');
+    const name = input.value.trim();
+    
+    if (!name) {
+        showToast('Please enter a change log name');
+        return;
+    }
+    
+    apiCall('/api/change-logs', {
+        method: 'POST',
+        body: JSON.stringify({ name })
+    }).then(result => {
+        if (result) {
+            loadData().then(() => {
+                // Select the newly created change log
+                selectedItem = result;
+                showChangelogDetails();
+                input.value = '';
+                showToast('Change log created successfully');
+            });
+        }
+    });
+}
+
 function toggleAuthorMode() {
     const toggle = document.getElementById('authorToggle');
     const currentModeEl = document.getElementById('currentMode');
@@ -2575,7 +2647,7 @@ function parseSources(text) {
         });
     }
     
-    return variables;
+    return sources;
 }
 
 function parseAllVariables(text) {
@@ -3353,6 +3425,7 @@ function showItemDetails() {
     document.getElementById('itemDetails').classList.remove('hidden');
     document.getElementById('folderDetails').classList.add('hidden');
     document.getElementById('changelogDetails').classList.add('hidden');
+    document.getElementById('changelogCreation').classList.add('hidden');
     document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('itemTitle').textContent = selectedItem.name;
@@ -3423,6 +3496,7 @@ function showChangelogDetails() {
     document.getElementById('itemDetails').classList.add('hidden');
     document.getElementById('folderDetails').classList.add('hidden');
     document.getElementById('changelogDetails').classList.remove('hidden');
+    document.getElementById('changelogCreation').classList.add('hidden');
     document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('changelogTitle').textContent = selectedItem.name;
@@ -3520,6 +3594,7 @@ function showFolderDetails() {
     document.getElementById('itemDetails').classList.add('hidden');
     document.getElementById('folderDetails').classList.remove('hidden');
     document.getElementById('changelogDetails').classList.add('hidden');
+    document.getElementById('changelogCreation').classList.add('hidden');
     document.getElementById('emptyState').classList.add('hidden');
     
     document.getElementById('folderTitle').textContent = folder.name + ' Folder';
@@ -3579,6 +3654,7 @@ function showEmptyState() {
     document.getElementById('itemDetails').classList.add('hidden');
     document.getElementById('folderDetails').classList.add('hidden');
     document.getElementById('changelogDetails').classList.add('hidden');
+    document.getElementById('changelogCreation').classList.add('hidden');
     document.getElementById('emptyState').classList.remove('hidden');
 }
 
@@ -3610,7 +3686,8 @@ function showAddModal() {
     } else if (activeRepository === 'sources') {
         showModal('addSourceModal');
     } else {
-        showModal('addChangelogModal');
+        // For change logs, don't show modal - handled by direct creation
+        return;
     }
 }
 
@@ -3819,24 +3896,6 @@ async function addSource(event) {
         document.getElementById('sourceUrl').value = '';
         document.getElementById('examplesList').innerHTML = '';
         addExample(); // Add one default example
-    }
-}
-
-async function addChangelog(event) {
-    event.preventDefault();
-    
-    const name = document.getElementById('changelogName').value;
-    
-    const result = await apiCall('/api/change-logs', {
-        method: 'POST',
-        body: JSON.stringify({ name })
-    });
-    
-    if (result) {
-        await loadData();
-        closeModal('addChangelogModal');
-        showToast('Change log created successfully');
-        document.getElementById('changelogName').value = '';
     }
 }
 
@@ -4082,7 +4141,11 @@ async function confirmDelete() {
         // Clear selection if deleted item was selected
         if (deleteTarget.type !== 'folder' && selectedItem && selectedItem.id === deleteTarget.id) {
             selectedItem = null;
-            showEmptyState();
+            if (activeRepository === 'changeLogs') {
+                showChangelogCreationState();
+            } else {
+                showEmptyState();
+            }
         } else if (deleteTarget.type === 'folder' && selectedFolder === deleteTarget.id) {
             selectedFolder = null;
             showEmptyState();
