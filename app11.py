@@ -47,6 +47,17 @@ def load_data():
                     if 'examples' not in source:
                         source['examples'] = []
                 
+                # Ensure all change logs have required fields
+                for i, log in enumerate(data.get('changeLogs', [])):
+                    if 'order' not in log:
+                        log['order'] = i
+                    if 'entries' not in log:
+                        log['entries'] = []
+                    if 'aiPercentage' not in log:
+                        log['aiPercentage'] = 0
+                    if 'totalCharacters' not in log:
+                        log['totalCharacters'] = 0
+                
                 # Ensure all folders have order field, parentId, and repository
                 for i, folder in enumerate(data.get('folders', [])):
                     if 'order' not in folder:
@@ -58,19 +69,22 @@ def load_data():
                     if 'repository' not in folder:
                         folder['repository'] = 'prompts'  # Default to prompts for existing folders
                 
-                # Sort folders, prompts, and sources by order
+                # Sort folders, prompts, sources, and change logs by order
                 data['folders'] = sorted(data.get('folders', []), key=lambda x: x.get('order', 0))
                 data['prompts'] = sorted(data.get('prompts', []), key=lambda x: x.get('order', 0))
                 data['sources'] = sorted(data.get('sources', []), key=lambda x: x.get('order', 0))
+                data['changeLogs'] = sorted(data.get('changeLogs', []), key=lambda x: x.get('order', 0))
                 
-                # Ensure sources array exists
+                # Ensure arrays exist
                 if 'sources' not in data:
                     data['sources'] = []
+                if 'changeLogs' not in data:
+                    data['changeLogs'] = []
                 
                 return data
         except json.JSONDecodeError:
             pass
-    return {'prompts': [], 'folders': [], 'sources': []}
+    return {'prompts': [], 'folders': [], 'sources': [], 'changeLogs': []}
 
 def save_data(data):
     """Save data to config.json"""
@@ -114,18 +128,41 @@ def count_source_references(source_name, prompts):
     
     return count
 
+def calculate_ai_percentage(entries):
+    """Calculate the percentage of content written by AI"""
+    if not entries:
+        return 0
+    
+    total_chars = 0
+    ai_chars = 0
+    
+    for entry in entries:
+        content = entry.get('content', '')
+        char_count = len(content)
+        total_chars += char_count
+        
+        if entry.get('type') == 'ai':
+            ai_chars += char_count
+    
+    return round((ai_chars / total_chars * 100) if total_chars > 0 else 0, 1)
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/api/data', methods=['GET'])
 def get_data():
-    """Get all prompts, sources, and folders"""
+    """Get all prompts, sources, folders, and change logs"""
     data = load_data()
     
     # Update reference counts for sources
     for source in data['sources']:
         source['referenceCount'] = count_source_references(source['name'], data['prompts'])
+    
+    # Update AI percentages for change logs
+    for log in data['changeLogs']:
+        log['aiPercentage'] = calculate_ai_percentage(log.get('entries', []))
+        log['totalCharacters'] = sum(len(entry.get('content', '')) for entry in log.get('entries', []))
     
     return jsonify(data)
 
@@ -190,6 +227,56 @@ def add_source():
     save_data(data)
     return jsonify(new_source)
 
+@app.route('/api/change-logs', methods=['POST'])
+def add_change_log():
+    """Add a new change log"""
+    data = load_data()
+    log_data = request.json
+    
+    # Get the highest order number for change logs
+    max_order = max([log.get('order', 0) for log in data['changeLogs']], default=-1)
+    
+    now = int(time.time() * 1000)
+    new_log = {
+        'id': str(now),
+        'name': log_data['name'],
+        'entries': [],
+        'order': max_order + 1,
+        'aiPercentage': 0,
+        'totalCharacters': 0,
+        'createdAt': now,
+        'updatedAt': now
+    }
+    
+    data['changeLogs'].append(new_log)
+    save_data(data)
+    return jsonify(new_log)
+
+@app.route('/api/change-logs/<log_id>/entries', methods=['POST'])
+def add_change_log_entry():
+    """Add an entry to a change log"""
+    data = load_data()
+    entry_data = request.json
+    
+    for log in data['changeLogs']:
+        if log['id'] == log_id:
+            now = int(time.time() * 1000)
+            new_entry = {
+                'id': str(now),
+                'type': entry_data['type'],  # 'ai' or 'human'
+                'content': entry_data['content'],
+                'timestamp': now
+            }
+            
+            log['entries'].append(new_entry)
+            log['updatedAt'] = now
+            log['aiPercentage'] = calculate_ai_percentage(log['entries'])
+            log['totalCharacters'] = sum(len(entry.get('content', '')) for entry in log['entries'])
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
 @app.route('/api/prompts/<prompt_id>', methods=['PUT'])
 def update_prompt(prompt_id):
     """Update a prompt (creates new version)"""
@@ -235,6 +322,21 @@ def update_source(source_id):
     save_data(data)
     return jsonify({'success': True})
 
+@app.route('/api/change-logs/<log_id>', methods=['PUT'])
+def update_change_log(log_id):
+    """Update a change log"""
+    data = load_data()
+    updates = request.json
+    
+    for log in data['changeLogs']:
+        if log['id'] == log_id:
+            log['name'] = updates.get('name', log['name'])
+            log['updatedAt'] = int(time.time() * 1000)
+            break
+    
+    save_data(data)
+    return jsonify({'success': True})
+
 @app.route('/api/prompts/<prompt_id>', methods=['DELETE'])
 def delete_prompt(prompt_id):
     """Delete a prompt"""
@@ -248,6 +350,14 @@ def delete_source(source_id):
     """Delete a source"""
     data = load_data()
     data['sources'] = [s for s in data['sources'] if s['id'] != source_id]
+    save_data(data)
+    return jsonify({'success': True})
+
+@app.route('/api/change-logs/<log_id>', methods=['DELETE'])
+def delete_change_log(log_id):
+    """Delete a change log"""
+    data = load_data()
+    data['changeLogs'] = [log for log in data['changeLogs'] if log['id'] != log_id]
     save_data(data)
     return jsonify({'success': True})
 
@@ -398,17 +508,16 @@ def move_item():
         # Get all items in the target container (folders + items)
         container_folders = [f for f in data['folders'] if f.get('parentId') == target_container and f.get('repository') == repository]
         container_items = [i for i in items_list if i.get('folderId') == target_container]
-        all_container_items = container_folders + container_items
         
         # If no position specified, put at end
         if target_position is None:
-            target_position = len(all_container_items)
+            target_position = len(container_folders) + len(container_items)
         
-        # Clamp position to valid range
-        target_position = max(0, min(target_position, len(all_container_items)))
+        # Adjust position to account for folders first
+        item_position = max(0, target_position - len(container_folders))
         
         # Reorder items in the target container
-        reordered_items = reorder_items_in_container(container_items, item_id, target_position - len(container_folders))
+        reordered_items = reorder_items_in_container(container_items, item_id, item_position)
         
         # Update the main items list
         for i, item_obj in enumerate(items_list):
@@ -447,21 +556,15 @@ def move_item():
         # Update parent
         folder['parentId'] = target_container
         
-        # Get all items in the target container
+        # Get all folders in the target container
         container_folders = [f for f in data['folders'] if f.get('parentId') == target_container and f.get('repository') == repository]
-        items_list = data['prompts'] if repository == 'prompts' else data['sources']
-        container_items = [i for i in items_list if i.get('folderId') == target_container]
-        all_container_items = container_folders + container_items
         
         # If no position specified, put at end
         if target_position is None:
-            target_position = len(all_container_items)
-        
-        # Clamp position to valid range
-        target_position = max(0, min(target_position, len(all_container_items)))
+            target_position = len(container_folders)
         
         # Reorder folders in the target container
-        reordered_folders = reorder_items_in_container(container_folders, item_id, min(target_position, len(container_folders)))
+        reordered_folders = reorder_items_in_container(container_folders, item_id, target_position)
         
         # Update the main folders list
         for i, f in enumerate(data['folders']):
